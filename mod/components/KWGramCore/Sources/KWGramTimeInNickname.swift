@@ -24,7 +24,7 @@ public enum KWGramTimeInNicknameRuntime {
         private let postbox: Postbox
         private let readNames: () -> Signal<(String, String)?, NoError>
         private let writeName: (String, String) -> Signal<Void, NoError>
-        private let settingsDisposable: Disposable?
+        private var settingsDisposable: Disposable?
         private var timer: Foundation.Timer?
         private var lastEnabled: Bool?
         private var updateInFlight = false
@@ -42,6 +42,7 @@ public enum KWGramTimeInNicknameRuntime {
             self.postbox = postbox
             self.readNames = readNames
             self.writeName = writeName
+            self.settingsDisposable = nil
             self.settingsDisposable = (KWGramCore.rawSettingsSignal(postbox: postbox)
             |> deliverOnMainQueue).start(next: { [weak self] settings in
                 self?.apply(enabled: settings.timeInNicknameEnabled)
