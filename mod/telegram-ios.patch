@@ -19959,7 +19959,7 @@ index 87c58b5f2..662a24798 100644
          }
          
 diff --git a/submodules/TelegramUI/Sources/AccountContext.swift b/submodules/TelegramUI/Sources/AccountContext.swift
-index 4d971fd33..c776d6e07 100644
+index 4d971fd33..a3bbaa4b7 100644
 --- a/submodules/TelegramUI/Sources/AccountContext.swift
 +++ b/submodules/TelegramUI/Sources/AccountContext.swift
 @@ -8,6 +8,8 @@ import DeviceAccess
@@ -20006,10 +20006,10 @@ index 4d971fd33..c776d6e07 100644
 +            let engine = self.engine
 +            let readNames: () -> Signal<(String, String)?, NoError> = {
 +                return account.postbox.transaction { transaction -> (String, String)? in
-+                    guard let user = transaction.getPeer(account.peerId) as? TelegramUser else {
++                    guard let user = transaction.getPeer(account.peerId) as? TelegramUser, let firstName = user.firstName else {
 +                        return nil
 +                    }
-+                    return (user.firstName, user.lastName)
++                    return (firstName, user.lastName ?? "")
 +                }
 +            }
 +            self.kwGramTimeInNicknameDisposable.set(KWGramTimeInNicknameRuntime.observe(postbox: account.postbox, readNames: readNames, writeName: { firstName, lastName in
