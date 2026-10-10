@@ -104,14 +104,19 @@ Telegram — как есть на iPhone он не встанет, и это о�
 **Sideloadly** или **AltStore**: они снимают эту подпись и переподписывают файл вашим
 Apple ID уже на вашей стороне (Windows/Linux подходят, Mac не нужен).
 
-Собрать локально на Mac тоже можно:
+Собрать локально на Mac тоже можно. База — тот же закреплённый коммит
+Telegram-iOS, под который написаны патч и модуль (иначе `git apply` не пройдёт):
 
 ```sh
-git clone https://github.com/TelegramMessenger/Telegram-iOS.git
-cd Telegram-iOS
+git init Telegram-iOS && cd Telegram-iOS
+git remote add origin https://github.com/TelegramMessenger/Telegram-iOS.git
+git fetch --depth 1 origin 36ded15d530ed43a293de5a9f8c1679e86f0e588
+git checkout FETCH_HEAD
+git submodule update --init --recursive --depth 1
 git apply /путь/до/KW-Gram/mod/telegram-ios.patch
 mkdir -p submodules/TelegramUI/Components/KWGram
 cp -R /путь/до/KW-Gram/mod/components/. submodules/TelegramUI/Components/KWGram/
+python3 /путь/до/KW-Gram/mod/apply-profile-visuals.py
 ```
 
 Дальше — `build-system/Make/Make.py` по инструкции самого репозитория Telegram-iOS.

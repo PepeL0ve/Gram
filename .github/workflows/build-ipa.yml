@@ -29,10 +29,16 @@ jobs:
           sudo xcode-select -s "$XCODE_APP/Contents/Developer"
           xcodebuild -version
 
-      - name: Check out Telegram-iOS
+      # Pinned to the upstream commit this patch and the mod code were written against
+      # (2026-07-06). Floating on master breaks `git apply` the moment upstream edits any
+      # of the ~60 touched files; bump the pin only together with a refreshed patch.
+      - name: Check out Telegram-iOS (pinned base)
         run: |
-          git clone --recursive --shallow-submodules --depth 1 -j8 \
-            https://github.com/TelegramMessenger/Telegram-iOS.git telegram-ios
+          git init telegram-ios
+          git -C telegram-ios remote add origin https://github.com/TelegramMessenger/Telegram-iOS.git
+          git -C telegram-ios fetch --depth 1 origin 36ded15d530ed43a293de5a9f8c1679e86f0e588
+          git -C telegram-ios checkout FETCH_HEAD
+          git -C telegram-ios submodule update --init --recursive --depth 1 -j8
 
       # mod/components/* are whole new Bazel packages, dropped in as-is under a single
       # KWGram/ directory; mod/telegram-ios.patch only touches files that already exist
