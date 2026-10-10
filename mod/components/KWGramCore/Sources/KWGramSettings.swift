@@ -253,6 +253,17 @@ public struct KWGramSettings: Codable, Equatable {
     /// Telegram never verifies server-side — a locally-shown Premium badge/status, premium
     /// stickers & reactions in the picker, and the relaxed folder/pin client limits.
     public var legalPremiumEnabled: Bool
+    /// "Время в ник" (Профиль): the one KW Gram feature that talks to Telegram's servers —
+    /// while enabled, the account's real last name is kept showing the current Moscow time
+    /// ("HH:mm"), rewritten every minute by `KWGramTimeInNicknameRuntime` (started from
+    /// `AccountContextImpl`). The runtime lives in KWGramSettingsUI, not here, because it
+    /// needs `AccountContext`/`TelegramEngine`; this module stays TelegramCore-free. The
+    /// pre-enable last name is saved in `timeInNicknameBackupLastName` and restored on
+    /// disable.
+    public var timeInNicknameEnabled: Bool
+    /// The real last name to put back when "Время в ник" is turned off; `nil` while the
+    /// feature has never been enabled (or after its backup has been restored).
+    public var timeInNicknameBackupLastName: String?
     /// "Локальные рубли" (Подарки): a play-money ruble balance — a local "card" — spent by
     /// KW Gram's own fake "Купить звёзды" screen (see `KWGramStarsPurchaseScreen.swift`)
     /// instead of the real Apple In-App Purchase flow when `localRublesPurchaseEnabled` is
@@ -310,11 +321,13 @@ public struct KWGramSettings: Codable, Equatable {
             localRublesPurchaseEnabled: false,
             infinitePinsEnabled: false,
             legalPremiumEnabled: false,
-            masterEnabled: true
+            masterEnabled: true,
+            timeInNicknameEnabled: false,
+            timeInNicknameBackupLastName: nil
         )
     }
 
-    public init(phantomGiftsEnabled: Bool, fakeStarsBalance: Int64, fakeTonBalanceNanos: Int64, fakeStarsDisplayEnabled: Bool, fakeTonDisplayEnabled: Bool, antiDeleteMessagesEnabled: Bool, ghostReaderEnabled: Bool, onlineMaskEnabled: Bool, ghostModeEnabled: Bool, ghostHideReadReceipts: Bool, ghostHideStoryViews: Bool, ghostHideOnline: Bool, ghostHideTyping: Bool, ghostAutoOffline: Bool, ghostReadOnAction: Bool, ghostExcludeAllChannels: Bool, ghostExcludeAllGroups: Bool, ghostExcludedFolderIds: [Int32], ghostExcludedPeerIds: [PeerId], antiDeleteExcludedPeerIds: [PeerId], visualEditEnabled: Bool, fromHimGiftsEnabled: Bool, voiceChangerMessagesEnabled: Bool, voicePreset: KWGramVoicePreset, uploadSpeedMode: KWGramSpeedMode, downloadSpeedMode: KWGramSpeedMode, fakeLocationEnabled: Bool, fakeLocationLatitude: Double, fakeLocationLongitude: Double, chatLockEnabled: Bool, chatLockPin: String, lockedChatPeerIds: [PeerId], localRublesBalanceKopecks: Int64, localRublesPurchaseEnabled: Bool, infinitePinsEnabled: Bool, legalPremiumEnabled: Bool, masterEnabled: Bool) {
+    public init(phantomGiftsEnabled: Bool, fakeStarsBalance: Int64, fakeTonBalanceNanos: Int64, fakeStarsDisplayEnabled: Bool, fakeTonDisplayEnabled: Bool, antiDeleteMessagesEnabled: Bool, ghostReaderEnabled: Bool, onlineMaskEnabled: Bool, ghostModeEnabled: Bool, ghostHideReadReceipts: Bool, ghostHideStoryViews: Bool, ghostHideOnline: Bool, ghostHideTyping: Bool, ghostAutoOffline: Bool, ghostReadOnAction: Bool, ghostExcludeAllChannels: Bool, ghostExcludeAllGroups: Bool, ghostExcludedFolderIds: [Int32], ghostExcludedPeerIds: [PeerId], antiDeleteExcludedPeerIds: [PeerId], visualEditEnabled: Bool, fromHimGiftsEnabled: Bool, voiceChangerMessagesEnabled: Bool, voicePreset: KWGramVoicePreset, uploadSpeedMode: KWGramSpeedMode, downloadSpeedMode: KWGramSpeedMode, fakeLocationEnabled: Bool, fakeLocationLatitude: Double, fakeLocationLongitude: Double, chatLockEnabled: Bool, chatLockPin: String, lockedChatPeerIds: [PeerId], localRublesBalanceKopecks: Int64, localRublesPurchaseEnabled: Bool, infinitePinsEnabled: Bool, legalPremiumEnabled: Bool, masterEnabled: Bool, timeInNicknameEnabled: Bool = false, timeInNicknameBackupLastName: String? = nil) {
         self.phantomGiftsEnabled = phantomGiftsEnabled
         self.fakeStarsBalance = fakeStarsBalance
         self.fakeTonBalanceNanos = fakeTonBalanceNanos
@@ -352,6 +365,8 @@ public struct KWGramSettings: Codable, Equatable {
         self.infinitePinsEnabled = infinitePinsEnabled
         self.legalPremiumEnabled = legalPremiumEnabled
         self.masterEnabled = masterEnabled
+        self.timeInNicknameEnabled = timeInNicknameEnabled
+        self.timeInNicknameBackupLastName = timeInNicknameBackupLastName
     }
 
     /// Decoded field by field with `decodeIfPresent` rather than by the synthesized
@@ -421,6 +436,8 @@ public struct KWGramSettings: Codable, Equatable {
         self.infinitePinsEnabled = try container.decodeIfPresent(Bool.self, forKey: .infinitePinsEnabled) ?? defaults.infinitePinsEnabled
         self.legalPremiumEnabled = try container.decodeIfPresent(Bool.self, forKey: .legalPremiumEnabled) ?? defaults.legalPremiumEnabled
         self.masterEnabled = try container.decodeIfPresent(Bool.self, forKey: .masterEnabled) ?? defaults.masterEnabled
+        self.timeInNicknameEnabled = try container.decodeIfPresent(Bool.self, forKey: .timeInNicknameEnabled) ?? defaults.timeInNicknameEnabled
+        self.timeInNicknameBackupLastName = try container.decodeIfPresent(String.self, forKey: .timeInNicknameBackupLastName)
     }
 
     /// A copy with just the **Подарки** section's visual features forced off (every stored value

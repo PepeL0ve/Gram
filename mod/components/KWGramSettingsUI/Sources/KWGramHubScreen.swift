@@ -200,6 +200,11 @@ private enum KWGramHubEntry: ItemListNodeEntry {
                 }
             )
         case .profile:
+            let activeCount = [
+                profileVisuals.anonymousNumberEnabled,
+                profileVisuals.ratingEnabled,
+                settings.timeInNicknameEnabled
+            ].filter { $0 }.count
             return ItemListDisclosureItem(
                 presentationData: presentationData,
                 systemStyle: .glass,
@@ -207,7 +212,7 @@ private enum KWGramHubEntry: ItemListNodeEntry {
                 title: "Профиль",
                 titleFont: .bold,
                 label: "",
-                additionalDetailLabel: "Раздел пока пуст",
+                additionalDetailLabel: "\(activeCount) из 3 функций активны",
                 sectionId: self.section,
                 style: .blocks,
                 action: {
@@ -290,6 +295,7 @@ private func kwGramHubEntries(settings: KWGramSettings, profileVisuals: KWGramPr
         settings.fromHimGiftsEnabled,
         profileVisuals.anonymousNumberEnabled,
         profileVisuals.ratingEnabled,
+        settings.timeInNicknameEnabled,
         settings.antiDeleteMessagesEnabled,
         settings.visualEditEnabled,
         settings.ghostModeEnabled
@@ -347,7 +353,7 @@ public func kwGramSettingsController(context: AccountContext) -> ViewController 
             pushControllerImpl?(kwGramAdminController(context: context))
         },
         openProfile: {
-            pushControllerImpl?(kwGramPlaceholderController(context: context, title: "Профиль"))
+            pushControllerImpl?(kwGramProfileSettingsController(context: context))
         },
         openStatus: {
             pushControllerImpl?(kwGramStatusController(context: context))

@@ -132,6 +132,7 @@ public func kwGramSearchController(context: AccountContext) -> ViewController {
 
     let openGifts: () -> Void = { pushControllerImpl?(kwGramGiftsSettingsController(context: context)) }
     let openMessages: () -> Void = { pushControllerImpl?(kwGramMessagesSettingsController(context: context)) }
+    let openProfile: () -> Void = { pushControllerImpl?(kwGramProfileSettingsController(context: context)) }
     let openGhost: () -> Void = { pushControllerImpl?(kwGramGhostSettingsController(context: context)) }
     let openAdditional: () -> Void = { pushControllerImpl?(kwGramAdditionalSettingsController(context: context)) }
     let openStatus: () -> Void = { pushControllerImpl?(kwGramStatusController(context: context)) }
@@ -148,8 +149,9 @@ public func kwGramSearchController(context: AccountContext) -> ViewController {
         KWGramSearchItem(title: "Локальные рубли", subtitle: "Локальная карта для покупки звёзд за рубли", sectionName: "Подарки", keywords: "рубли карта покупка звёзд", open: openGifts),
         KWGramSearchItem(title: "История и статистика", subtitle: "Локальный журнал Stars/TON/рублей: пополнения, покупки, продажи", sectionName: "Подарки", keywords: "ledger история статистика пополнения покупки продажи журнал", open: openGifts),
         KWGramSearchItem(title: "Маркет подарков", subtitle: "Локальный маркет: выставить и снять подарки", sectionName: "Подарки", keywords: "market маркет продать выставить подарки", open: openGiftMarket),
-        KWGramSearchItem(title: "Визуальный +888", subtitle: "Локально заменить свой номер в профиле", sectionName: "Подарки", keywords: "888 номер anonymous number профиль", open: openGifts),
-        KWGramSearchItem(title: "Визуальный рейтинг", subtitle: "Локальный рейтинг и очки в своём профиле", sectionName: "Подарки", keywords: "rating рейтинг очки уровень профиль", open: openGifts),
+        KWGramSearchItem(title: "Визуальный +888", subtitle: "Локально заменить свой номер в профиле", sectionName: "Профиль", keywords: "888 номер anonymous number профиль", open: openProfile),
+        KWGramSearchItem(title: "Визуальный рейтинг", subtitle: "Локальный рейтинг и очки в своём профиле", sectionName: "Профиль", keywords: "rating рейтинг очки уровень профиль", open: openProfile),
+        KWGramSearchItem(title: "Время в ник", subtitle: "Показывать московское время в имени вместо фамилии", sectionName: "Профиль", keywords: "время ник имя фамилия москва время nickname", open: openProfile),
         KWGramSearchItem(title: "Удалённые сообщения", subtitle: "Сохранять сообщения, удалённые собеседником", sectionName: "Чаты", keywords: "антиделит recover delete восстановление", open: openMessages),
         KWGramSearchItem(title: "Изменить визуально", subtitle: "Локально править текст и подкладывать фейк-контент", sectionName: "Чаты", keywords: "visual edit фейк текст фото", open: openMessages),
         KWGramSearchItem(title: "Режим призрака", subtitle: "Скрывать прочтение, онлайн, «печатает», истории", sectionName: "Ghost", keywords: "ghost призрак нечиталка онлайн typing", open: openGhost),

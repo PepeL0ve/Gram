@@ -18,6 +18,7 @@ public enum KWGramBanSection: String, Codable, CaseIterable {
     case gifts
     case messages
     case ghost
+    case profile
 
     public var displayName: String {
         switch self {
@@ -27,6 +28,8 @@ public enum KWGramBanSection: String, Codable, CaseIterable {
             return "Сообщения"
         case .ghost:
             return "Ghost"
+        case .profile:
+            return "Профиль"
         }
     }
 }

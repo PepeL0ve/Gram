@@ -25,8 +25,6 @@ private final class KWGramSettingsArguments {
     let topUpLocalRubles: () -> Void
     let resetBalances: () -> Void
     let deleteAllPhantomGifts: () -> Void
-    let openVisualNumberEditor: () -> Void
-    let openVisualRatingEditor: () -> Void
     let openCollectionMarket: () -> Void
     let openStarsLedger: () -> Void
     let openTonLedger: () -> Void
@@ -43,8 +41,6 @@ private final class KWGramSettingsArguments {
         topUpLocalRubles: @escaping () -> Void,
         resetBalances: @escaping () -> Void,
         deleteAllPhantomGifts: @escaping () -> Void,
-        openVisualNumberEditor: @escaping () -> Void,
-        openVisualRatingEditor: @escaping () -> Void,
         openCollectionMarket: @escaping () -> Void,
         openStarsLedger: @escaping () -> Void,
         openTonLedger: @escaping () -> Void
@@ -60,8 +56,6 @@ private final class KWGramSettingsArguments {
         self.topUpLocalRubles = topUpLocalRubles
         self.resetBalances = resetBalances
         self.deleteAllPhantomGifts = deleteAllPhantomGifts
-        self.openVisualNumberEditor = openVisualNumberEditor
-        self.openVisualRatingEditor = openVisualRatingEditor
         self.openCollectionMarket = openCollectionMarket
         self.openStarsLedger = openStarsLedger
         self.openTonLedger = openTonLedger
@@ -76,7 +70,6 @@ private enum KWGramSettingsSection: Int32 {
     case tonBalance
     case localRubles
     case fromHimGifts
-    case profileVisuals
     case collectionMarket
     case ledger
     case resetBalances
@@ -111,9 +104,6 @@ private enum KWGramSettingsEntry: ItemListNodeEntry {
     case fromHimGiftsToggle(String, Bool)
     case fromHimGiftsFooter(String)
 
-    case profileVisualsHeader(String)
-    case visualNumberEditor(String, String)
-    case visualRating(String, String)
     case collectionHeader(String)
     case collectionMarket(String, String)
     case collectionFooter(String)
@@ -147,8 +137,6 @@ private enum KWGramSettingsEntry: ItemListNodeEntry {
             return KWGramSettingsSection.localRubles.rawValue
         case .fromHimGiftsToggle, .fromHimGiftsFooter:
             return KWGramSettingsSection.fromHimGifts.rawValue
-        case .profileVisualsHeader, .visualNumberEditor, .visualRating:
-            return KWGramSettingsSection.profileVisuals.rawValue
         case .collectionHeader, .collectionMarket, .collectionFooter:
             return KWGramSettingsSection.collectionMarket.rawValue
         case .ledgerHeader, .starsLedger, .tonLedger, .ledgerFooter:
@@ -182,9 +170,6 @@ private enum KWGramSettingsEntry: ItemListNodeEntry {
         case .localRublesPurchaseToggle: return 16
         case .localRublesBalance: return 17
         case .localRublesFooter: return 18
-        case .profileVisualsHeader: return 19
-        case .visualNumberEditor: return 20
-        case .visualRating: return 21
         case .collectionHeader: return 22
         case .collectionMarket: return 23
         case .collectionFooter: return 24
@@ -216,7 +201,7 @@ private enum KWGramSettingsEntry: ItemListNodeEntry {
             return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
         case let .aboutText(text):
             return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
-        case let .phantomGiftsHeader(text), let .starsBalanceHeader(text), let .tonBalanceHeader(text), let .localRublesHeader(text), let .profileVisualsHeader(text), let .collectionHeader(text), let .ledgerHeader(text), let .storageHeader(text):
+        case let .phantomGiftsHeader(text), let .starsBalanceHeader(text), let .tonBalanceHeader(text), let .localRublesHeader(text), let .collectionHeader(text), let .ledgerHeader(text), let .storageHeader(text):
             return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
         case let .phantomGiftsFooter(text), let .starsBalanceFooter(text), let .tonBalanceFooter(text), let .localRublesFooter(text), let .fromHimGiftsFooter(text), let .collectionFooter(text), let .ledgerFooter(text), let .resetBalancesFooter(text), let .storageFooter(text):
             return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
@@ -252,10 +237,6 @@ private enum KWGramSettingsEntry: ItemListNodeEntry {
             return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, value: value, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.toggleFromHimGifts(value)
             })
-        case let .visualNumberEditor(title, label):
-            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: title, label: label, sectionId: self.section, style: .blocks, action: arguments.openVisualNumberEditor)
-        case let .visualRating(title, label):
-            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: title, label: label, sectionId: self.section, style: .blocks, action: arguments.openVisualRatingEditor)
         case let .collectionMarket(title, label):
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: title, label: label, sectionId: self.section, style: .blocks, action: arguments.openCollectionMarket)
         case let .starsLedger(title, label):
@@ -391,13 +372,13 @@ private func parseRublesTopUp(_ text: String) -> Int64? {
     return whole * 100 + fraction
 }
 
-private func kwGramSettingsEntries(settings: KWGramSettings, profileVisuals: KWGramProfileVisualState, phantomGiftCount: Int) -> [KWGramSettingsEntry] {
+private func kwGramSettingsEntries(settings: KWGramSettings, phantomGiftCount: Int) -> [KWGramSettingsEntry] {
     var entries: [KWGramSettingsEntry] = []
 
     entries.append(.visualToggle(settings.masterEnabled))
     entries.append(.visualFooter(settings.masterEnabled ? "Визуальные функции подарков включены. Выключи — и вкладки «Подарок мне»/«Подарок ему» и локальные балансы перестанут действовать, но настройки сохранятся." : "Визуалка подарков выключена: вкладки и локальные балансы не работают. Включи, чтобы вернуть всё как было. Остальные разделы KW Gram это не затрагивает."))
 
-    entries.append(.aboutText("Все значения в этом разделе сохраняются только на устройстве. Ниже находятся две настройки визуального номера и рейтинга профиля."))
+    entries.append(.aboutText("Все значения в этом разделе сохраняются только на устройстве. Визуалы профиля (+888 и рейтинг) теперь живут в разделе «Профиль»."))
 
     entries.append(.phantomGiftsHeader("ВИЗУАЛЬНЫЕ ПОДАРКИ"))
     entries.append(.phantomGiftsToggle("«Подарок ему»", settings.phantomGiftsEnabled))
@@ -420,12 +401,6 @@ private func kwGramSettingsEntries(settings: KWGramSettings, profileVisuals: KWG
     entries.append(.localRublesPurchaseToggle("Покупка звёзд за рубли", settings.localRublesPurchaseEnabled))
     entries.append(.localRublesBalance("Рубли", formatRubles(kopecks: settings.localRublesBalanceKopecks)))
     entries.append(.localRublesFooter("Пока включено, кнопка «Пополнить» на экране звёзд открывает локальную оплату SberPay — списывает рубли и зачисляет визуальные Stars."))
-
-    entries.append(.profileVisualsHeader("ВИЗУАЛЫ ПРОФИЛЯ"))
-    let visualNumberLabel = profileVisuals.anonymousNumberEnabled ? profileVisuals.anonymousNumber : "Настроить"
-    entries.append(.visualNumberEditor("Визуальный +888", visualNumberLabel))
-    let visualRatingLabel = profileVisuals.ratingEnabled ? "Уровень \(max(1, profileVisuals.ratingValue))" : "Настроить"
-    entries.append(.visualRating("Визуальный рейтинг", visualRatingLabel))
 
     entries.append(.collectionHeader("КОЛЛЕКЦИЯ И МАРКЕТ"))
     entries.append(.collectionMarket("Коллекция и маркет", "\(phantomGiftCount) подарков"))
@@ -454,8 +429,6 @@ public func kwGramGiftsSettingsController(context: AccountContext) -> ViewContro
     var presentControllerImpl: ((ViewController) -> Void)?
     var presentTooltipImpl: ((String) -> Void)?
     var pushControllerImpl: ((ViewController) -> Void)?
-    var presentRatingEditorImpl: (() -> Void)?
-    var presentNumberEditorImpl: (() -> Void)?
 
     let arguments = KWGramSettingsArguments(
         toggleVisual: { value in
@@ -610,8 +583,6 @@ public func kwGramGiftsSettingsController(context: AccountContext) -> ViewContro
                 actionLayout: .horizontal
             ))
         },
-        openVisualNumberEditor: { presentNumberEditorImpl?() },
-        openVisualRatingEditor: { presentRatingEditorImpl?() },
         openCollectionMarket: { pushControllerImpl?(kwGramGiftMarketController(context: context)) },
         openStarsLedger: { pushControllerImpl?(kwGramLedgerController(context: context, currency: .stars)) },
         openTonLedger: { pushControllerImpl?(kwGramLedgerController(context: context, currency: .ton)) }
@@ -620,11 +591,10 @@ public func kwGramGiftsSettingsController(context: AccountContext) -> ViewContro
     let signal = combineLatest(
         context.sharedContext.presentationData,
         KWGramCore.rawSettingsSignal(postbox: context.account.postbox),
-        KWGramProfileVisualStore.signal(postbox: context.account.postbox),
         KWGramPhantomGiftStore.allGiftsSignal(context: context)
     )
     |> deliverOnMainQueue
-    |> map { presentationData, settings, profileVisuals, phantomGifts -> (ItemListControllerState, (ItemListNodeState, Any)) in
+    |> map { presentationData, settings, phantomGifts -> (ItemListControllerState, (ItemListNodeState, Any)) in
         let controllerState = ItemListControllerState(
             presentationData: ItemListPresentationData(presentationData),
             title: .text("Подарки"),
@@ -635,7 +605,7 @@ public func kwGramGiftsSettingsController(context: AccountContext) -> ViewContro
         )
         let listState = ItemListNodeState(
             presentationData: ItemListPresentationData(presentationData),
-            entries: kwGramSettingsEntries(settings: settings, profileVisuals: profileVisuals, phantomGiftCount: phantomGifts.count),
+            entries: kwGramSettingsEntries(settings: settings, phantomGiftCount: phantomGifts.count),
             style: .blocks,
             animateChanges: true
         )
@@ -648,18 +618,6 @@ public func kwGramGiftsSettingsController(context: AccountContext) -> ViewContro
     }
     pushControllerImpl = { [weak controller] c in
         controller?.push(c)
-    }
-    presentRatingEditorImpl = { [weak controller] in
-        guard let controller else {
-            return
-        }
-        controller.push(kwGramProfileRatingEditorController(context: context))
-    }
-    presentNumberEditorImpl = { [weak controller] in
-        guard let controller else {
-            return
-        }
-        controller.push(kwGramProfileNumberEditorController(context: context))
     }
     presentTooltipImpl = { [weak controller] text in
         guard let controller else {

@@ -15,12 +15,14 @@ private final class KWGramStatusArguments {
     let openIconPicker: () -> Void
     let openGifts: () -> Void
     let openMessages: () -> Void
+    let openProfile: () -> Void
     let openGhost: () -> Void
 
-    init(openIconPicker: @escaping () -> Void, openGifts: @escaping () -> Void, openMessages: @escaping () -> Void, openGhost: @escaping () -> Void) {
+    init(openIconPicker: @escaping () -> Void, openGifts: @escaping () -> Void, openMessages: @escaping () -> Void, openProfile: @escaping () -> Void, openGhost: @escaping () -> Void) {
         self.openIconPicker = openIconPicker
         self.openGifts = openGifts
         self.openMessages = openMessages
+        self.openProfile = openProfile
         self.openGhost = openGhost
     }
 }
@@ -60,6 +62,9 @@ private enum KWGramStatusEntry: ItemListNodeEntry {
     case messagesHeader(String)
     case messagesRow(Int32, String, Bool)
 
+    case profileHeader(String)
+    case profileRow(Int32, String, Bool)
+
     case ghostHeader(String)
     case ghostRow(Int32, String, Bool)
 
@@ -73,8 +78,10 @@ private enum KWGramStatusEntry: ItemListNodeEntry {
             return 2
         case .messagesHeader, .messagesRow:
             return 3
-        case .ghostHeader, .ghostRow:
+        case .profileHeader, .profileRow:
             return 4
+        case .ghostHeader, .ghostRow:
+            return 5
         }
     }
 
@@ -96,6 +103,10 @@ private enum KWGramStatusEntry: ItemListNodeEntry {
             return 220
         case let .messagesRow(index, _, _):
             return 221 + index
+        case .profileHeader:
+            return 230
+        case let .profileRow(index, _, _):
+            return 231 + index
         case .ghostHeader:
             return 240
         case let .ghostRow(index, _, _):
@@ -125,7 +136,7 @@ private enum KWGramStatusEntry: ItemListNodeEntry {
                 disclosureStyle: .none,
                 action: nil
             )
-        case let .iconHeader(text), let .giftsHeader(text), let .messagesHeader(text), let .ghostHeader(text):
+        case let .iconHeader(text), let .giftsHeader(text), let .messagesHeader(text), let .profileHeader(text), let .ghostHeader(text):
             return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
         case let .iconFooter(text):
             return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
@@ -173,6 +184,21 @@ private enum KWGramStatusEntry: ItemListNodeEntry {
                     arguments.openMessages()
                 }
             )
+        case let .profileRow(_, title, isOn):
+            return ItemListDisclosureItem(
+                presentationData: presentationData,
+                systemStyle: .glass,
+                icon: generateKWGramSectionIcon(systemName: "person.fill", backgroundColor: UIColor(rgb: 0x5856d6)),
+                title: title,
+                label: "",
+                additionalDetailLabel: isOn ? "Включено" : "Выключено",
+                additionalDetailLabelColor: isOn ? .constructive : .destructive,
+                sectionId: self.section,
+                style: .blocks,
+                action: {
+                    arguments.openProfile()
+                }
+            )
         case let .ghostRow(_, title, isOn):
             return ItemListDisclosureItem(
                 presentationData: presentationData,
@@ -208,12 +234,15 @@ private func kwGramStatusEntries(isPro: Bool, icons: [PresentationAppIcon], curr
     entries.append(.giftsRow(1, "Локальные звёзды", settings.fakeStarsDisplayEnabled))
     entries.append(.giftsRow(2, "Локальные TON/GRAM", settings.fakeTonDisplayEnabled))
     entries.append(.giftsRow(3, "От него", settings.fromHimGiftsEnabled))
-    entries.append(.giftsRow(4, "Визуальный +888", profileVisuals.anonymousNumberEnabled))
-    entries.append(.giftsRow(5, "Визуальный рейтинг", profileVisuals.ratingEnabled))
 
     entries.append(.messagesHeader("ЧАТЫ"))
     entries.append(.messagesRow(0, "Удалённые сообщения", settings.antiDeleteMessagesEnabled))
     entries.append(.messagesRow(1, "Изменить визуально", settings.visualEditEnabled))
+
+    entries.append(.profileHeader("ПРОФИЛЬ"))
+    entries.append(.profileRow(0, "Визуальный +888", profileVisuals.anonymousNumberEnabled))
+    entries.append(.profileRow(1, "Визуальный рейтинг", profileVisuals.ratingEnabled))
+    entries.append(.profileRow(2, "Время в ник", settings.timeInNicknameEnabled))
 
     entries.append(.ghostHeader("GHOST"))
     entries.append(.ghostRow(0, "Режим призрака", settings.ghostModeEnabled))
@@ -256,6 +285,11 @@ public func kwGramStatusController(context: AccountContext) -> ViewController {
         openMessages: {
             kwGramGateSection(context: context, section: .messages) {
                 pushControllerImpl?(kwGramMessagesSettingsController(context: context))
+            }
+        },
+        openProfile: {
+            kwGramGateSection(context: context, section: .profile) {
+                pushControllerImpl?(kwGramProfileSettingsController(context: context))
             }
         },
         openGhost: {

@@ -19959,7 +19959,7 @@ index 87c58b5f2..662a24798 100644
          }
          
 diff --git a/submodules/TelegramUI/Sources/AccountContext.swift b/submodules/TelegramUI/Sources/AccountContext.swift
-index 4d971fd33..b1e51a57f 100644
+index 4d971fd33..e25e1888f 100644
 --- a/submodules/TelegramUI/Sources/AccountContext.swift
 +++ b/submodules/TelegramUI/Sources/AccountContext.swift
 @@ -8,6 +8,8 @@ import DeviceAccess
@@ -19971,7 +19971,7 @@ index 4d971fd33..b1e51a57f 100644
  import TemporaryCachedPeerDataManager
  import PhoneNumberFormat
  import TelegramUIPreferences
-@@ -271,7 +273,11 @@ public final class AccountContextImpl: AccountContext {
+@@ -271,7 +273,15 @@ public final class AccountContextImpl: AccountContext {
      public private(set) var isFrozen: Bool
      
      public let imageCache: AnyObject?
@@ -19981,10 +19981,14 @@ index 4d971fd33..b1e51a57f 100644
 +    // KW Gram user transferred into this account's own collection automatically (no user action).
 +    private let kwGramGiftReceiveDisposable = MetaDisposable()
 +
++    // KW Gram: mirrors the Moscow wall-clock time into this account's profile last name every
++    // minute while "Время в ник" is on (restores the previous last name when it goes off).
++    private let kwGramTimeInNicknameDisposable = MetaDisposable()
++
      public init(sharedContext: SharedAccountContextImpl, account: Account, limitsConfiguration: LimitsConfiguration, contentSettings: ContentSettings, appConfiguration: AppConfiguration, availableReplyColors: EngineAvailableColorOptions, availableProfileColors: EngineAvailableColorOptions, temp: Bool = false)
      {
          self.sharedContextImpl = sharedContext
-@@ -295,6 +301,8 @@ public final class AccountContextImpl: AccountContext {
+@@ -295,6 +305,8 @@ public final class AccountContextImpl: AccountContext {
          }
          self.fetchManager = FetchManagerImpl(postbox: account.postbox, storeManager: self.downloadedMediaStoreManager)
          if sharedContext.applicationBindings.isMainApp && !temp {
@@ -19993,11 +19997,22 @@ index 4d971fd33..b1e51a57f 100644
              self.prefetchManager = PrefetchManagerImpl(sharedContext: sharedContext, account: account, engine: self.engine, fetchManager: self.fetchManager)
              self.wallpaperUploadManager = WallpaperUploadManagerImpl(sharedContext: sharedContext, account: account, presentationData: sharedContext.presentationData)
              self.themeUpdateManager = ThemeUpdateManagerImpl(sharedContext: sharedContext, account: account)
-@@ -505,6 +513,7 @@ public final class AccountContextImpl: AccountContext {
+@@ -502,9 +514,18 @@ public final class AccountContextImpl: AccountContext {
+             }
+             (self.animationRenderer as? DCTMultiAnimationRendererImpl)?.useYuvA = settings.compressedEmojiCache
+         })
++
++        if sharedContext.applicationBindings.isMainApp && !temp {
++            let engine = self.engine
++            self.kwGramTimeInNicknameDisposable.set(KWGramTimeInNicknameRuntime.observe(postbox: account.postbox, peerId: account.peerId, updateName: { firstName, lastName in
++                return engine.accountData.updateAccountPeerName(firstName: firstName, lastName: lastName)
++            }))
++        }
      }
      
      deinit {
 +        self.kwGramGiftReceiveDisposable.dispose()
++        self.kwGramTimeInNicknameDisposable.dispose()
          self.limitsConfigurationDisposable?.dispose()
          self.managedAppSpecificContactsDisposable?.dispose()
          self.contentSettingsDisposable?.dispose()
