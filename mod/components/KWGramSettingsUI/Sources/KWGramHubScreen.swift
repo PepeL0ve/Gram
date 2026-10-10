@@ -26,7 +26,7 @@ private enum KWGramHubEntry: ItemListNodeEntry {
     case appearance
     case advanced
     case admin
-    case profile
+    case profile(Int)
     case status(Int, Int)
     case team
 
@@ -199,12 +199,7 @@ private enum KWGramHubEntry: ItemListNodeEntry {
                     arguments.openAdmin()
                 }
             )
-        case .profile:
-            let activeCount = [
-                profileVisuals.anonymousNumberEnabled,
-                profileVisuals.ratingEnabled,
-                settings.timeInNicknameEnabled
-            ].filter { $0 }.count
+        case let .profile(activeCount):
             return ItemListDisclosureItem(
                 presentationData: presentationData,
                 systemStyle: .glass,
@@ -313,7 +308,12 @@ private func kwGramHubEntries(settings: KWGramSettings, profileVisuals: KWGramPr
     if isAdmin {
         entries.append(.admin)
     }
-    entries.append(.profile)
+    let profileActiveCount = [
+        profileVisuals.anonymousNumberEnabled,
+        profileVisuals.ratingEnabled,
+        settings.timeInNicknameEnabled
+    ].filter { $0 }.count
+    entries.append(.profile(profileActiveCount))
     entries.append(.status(activeCount, toggles.count))
     entries.append(.team)
     return entries
