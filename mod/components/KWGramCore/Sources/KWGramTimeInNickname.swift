@@ -95,8 +95,8 @@ public enum KWGramTimeInNicknameRuntime {
             let postbox = self.postbox
             let readNames = self.readNames
             let _ = (readNames()
-            |> deliverOnMainQueue).start(next: { [weak self] names in
-                guard let self, let (_, lastName) = names else {
+            |> deliverOnMainQueue).start(next: { names in
+                guard let (_, lastName) = names else {
                     return
                 }
                 let _ = postbox.transaction { transaction -> Void in
@@ -133,7 +133,10 @@ public enum KWGramTimeInNicknameRuntime {
                 }
                 let _ = (readNames()
                 |> deliverOnMainQueue).start(next: { [weak self] names in
-                    guard let self, let (firstName, _) = names else {
+                    guard let self else {
+                        return
+                    }
+                    guard let (firstName, _) = names else {
                         self.updateInFlight = false
                         return
                     }
