@@ -9,12 +9,12 @@ import Postbox
 /// captured into `timeInNicknameBackupLastName` on the off→on transition and restored,
 /// with the backup cleared, when the setting turns off again.
 ///
-/// Lives in KWGramCore (no TelegramCore import) — the actual name write is injected as an
-/// `updateName` closure so the caller (TelegramUI's AccountContext hook, which owns the
-/// engine) supplies `engine.accountData.updateAccountPeerName`.
+/// Lives in KWGramCore (no TelegramCore import) — reading the account's current names and
+/// writing them is injected by the caller (TelegramUI's AccountContext hook, which owns the
+/// engine and TelegramUser).
 public enum KWGramTimeInNicknameRuntime {
-    public static func observe(postbox: Postbox, peerId: PeerId, updateName: @escaping (String, String) -> Signal<Void, NoError>) -> Disposable {
-        let session = Session(postbox: postbox, peerId: peerId, updateName: updateName)
+    public static func observe(postbox: Postbox, readNames: @escaping () -> Signal<(String, String)?, NoError>, writeName: @escaping (String, String) -> Signal<Void, NoError>) -> Disposable {
+        let session = Session(postbox: postbox, readNames: readNames, writeName: writeName)
         return ActionDisposable {
             session.shutdown()
         }
@@ -22,10 +22,10 @@ public enum KWGramTimeInNicknameRuntime {
 
     private final class Session {
         private let postbox: Postbox
-        private let peerId: PeerId
-        private let updateName: (String, String) -> Signal<Void, NoError>
+        private let readNames: () -> Signal<(String, String)?, NoError>
+        private let writeName: (String, String) -> Signal<Void, NoError>
         private let settingsDisposable: Disposable?
-        private var timer: Timer?
+        private var timer: Foundation.Timer?
         private var lastEnabled: Bool?
         private var updateInFlight = false
         private var stopped = false
@@ -38,10 +38,10 @@ public enum KWGramTimeInNicknameRuntime {
             return formatter
         }()
 
-        init(postbox: Postbox, peerId: PeerId, updateName: @escaping (String, String) -> Signal<Void, NoError>) {
+        init(postbox: Postbox, readNames: @escaping () -> Signal<(String, String)?, NoError>, writeName: @escaping (String, String) -> Signal<Void, NoError>) {
             self.postbox = postbox
-            self.peerId = peerId
-            self.updateName = updateName
+            self.readNames = readNames
+            self.writeName = writeName
             self.settingsDisposable = (KWGramCore.rawSettingsSignal(postbox: postbox)
             |> deliverOnMainQueue).start(next: { [weak self] settings in
                 self?.apply(enabled: settings.timeInNicknameEnabled)
@@ -83,7 +83,7 @@ public enum KWGramTimeInNicknameRuntime {
             let interval: TimeInterval = 60.0
             let now = Date()
             let delay = interval - now.timeIntervalSince1970.truncatingRemainder(dividingBy: interval)
-            let timer = Timer(fire: now.addingTimeInterval(delay), interval: interval, repeats: true, block: { [weak self] _ in
+            let timer = Foundation.Timer(fire: now.addingTimeInterval(delay), interval: interval, repeats: true, block: { [weak self] _ in
                 self?.tick()
             })
             timer.tolerance = 0.5
@@ -92,18 +92,24 @@ public enum KWGramTimeInNicknameRuntime {
         }
 
         private func captureBackupIfNeeded() {
-            let peerId = self.peerId
             let postbox = self.postbox
-            let _ = postbox.transaction { transaction -> Void in
-                guard KWGramCore.rawSettings(transaction: transaction).timeInNicknameBackupLastName == nil, let user = transaction.getPeer(peerId) as? TelegramUser else {
+            let readNames = self.readNames
+            let _ = (readNames()
+            |> deliverOnMainQueue).start(next: { [weak self] names in
+                guard let self, let (_, lastName) = names else {
                     return
                 }
-                KWGramCore.updateSettings(transaction: transaction, { settings in
-                    var settings = settings
-                    settings.timeInNicknameBackupLastName = user.lastName
-                    return settings
-                })
-            }.start()
+                let _ = postbox.transaction { transaction -> Void in
+                    guard KWGramCore.rawSettings(transaction: transaction).timeInNicknameBackupLastName == nil else {
+                        return
+                    }
+                    KWGramCore.updateSettings(transaction: transaction, { settings in
+                        var settings = settings
+                        settings.timeInNicknameBackupLastName = lastName
+                        return settings
+                    })
+                }.start()
+            })
         }
 
         private func restoreBackupIfNeeded() {
@@ -111,35 +117,39 @@ public enum KWGramTimeInNicknameRuntime {
                 return
             }
             let postbox = self.postbox
-            let peerId = self.peerId
-            let updateName = self.updateName
+            let readNames = self.readNames
+            let writeName = self.writeName
             self.updateInFlight = true
-            let _ = (postbox.transaction { transaction -> (String, String)? in
-                guard let backup = KWGramCore.rawSettings(transaction: transaction).timeInNicknameBackupLastName, let user = transaction.getPeer(peerId) as? TelegramUser else {
-                    return nil
-                }
-                return (user.firstName, backup)
+            let _ = (postbox.transaction { transaction -> String? in
+                return KWGramCore.rawSettings(transaction: transaction).timeInNicknameBackupLastName
             }
-            |> deliverOnMainQueue).start(next: { [weak self] names in
+            |> deliverOnMainQueue).start(next: { [weak self] backup in
                 guard let self else {
                     return
                 }
-                guard let (firstName, lastName) = names else {
+                guard let backup else {
                     self.updateInFlight = false
                     return
                 }
-                let _ = updateName(firstName, lastName).start(completed: { [weak self] in
-                    guard let self else {
+                let _ = (readNames()
+                |> deliverOnMainQueue).start(next: { [weak self] names in
+                    guard let self, let (firstName, _) = names else {
+                        self.updateInFlight = false
                         return
                     }
-                    self.updateInFlight = false
-                    let _ = postbox.transaction { transaction -> Void in
-                        KWGramCore.updateSettings(transaction: transaction, { settings in
-                            var settings = settings
-                            settings.timeInNicknameBackupLastName = nil
-                            return settings
-                        })
-                    }.start()
+                    let _ = writeName(firstName, backup).start(completed: { [weak self] in
+                        guard let self else {
+                            return
+                        }
+                        self.updateInFlight = false
+                        let _ = postbox.transaction { transaction -> Void in
+                            KWGramCore.updateSettings(transaction: transaction, { settings in
+                                var settings = settings
+                                settings.timeInNicknameBackupLastName = nil
+                                return settings
+                            })
+                        }.start()
+                    })
                 })
             })
         }
@@ -149,22 +159,16 @@ public enum KWGramTimeInNicknameRuntime {
                 return
             }
             let timeString = Session.mskFormatter.string(from: Date())
-            let postbox = self.postbox
-            let peerId = self.peerId
-            let updateName = self.updateName
+            let readNames = self.readNames
+            let writeName = self.writeName
             self.updateInFlight = true
-            let _ = (postbox.transaction { transaction -> (String, String)? in
-                guard let user = transaction.getPeer(peerId) as? TelegramUser else {
-                    return nil
-                }
-                return (user.firstName, user.lastName)
-            }
+            let _ = (readNames()
             |> deliverOnMainQueue).start(next: { [weak self] names in
                 guard let self else {
                     return
                 }
                 if let (firstName, lastName) = names, lastName != timeString, !self.stopped {
-                    let _ = updateName(firstName, timeString).start(completed: { [weak self] in
+                    let _ = writeName(firstName, timeString).start(completed: { [weak self] in
                         self?.updateInFlight = false
                     })
                 } else {
