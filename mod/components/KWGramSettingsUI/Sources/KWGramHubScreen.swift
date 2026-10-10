@@ -26,6 +26,7 @@ private enum KWGramHubEntry: ItemListNodeEntry {
     case appearance
     case advanced
     case admin
+    case profile
     case status(Int, Int)
     case team
 
@@ -35,7 +36,7 @@ private enum KWGramHubEntry: ItemListNodeEntry {
             return KWGramHubSection.hero.rawValue
         case .search:
             return KWGramHubSection.search.rawValue
-        case .gifts, .messages, .privacy, .appearance, .advanced, .admin:
+        case .gifts, .messages, .privacy, .appearance, .advanced, .admin, .profile:
             return KWGramHubSection.sections.rawValue
         case .status:
             return KWGramHubSection.status.rawValue
@@ -62,10 +63,12 @@ private enum KWGramHubEntry: ItemListNodeEntry {
             return 6
         case .admin:
             return 7
-        case .status:
+        case .profile:
             return 8
-        case .team:
+        case .status:
             return 9
+        case .team:
+            return 10
         }
     }
 
@@ -196,6 +199,21 @@ private enum KWGramHubEntry: ItemListNodeEntry {
                     arguments.openAdmin()
                 }
             )
+        case .profile:
+            return ItemListDisclosureItem(
+                presentationData: presentationData,
+                systemStyle: .glass,
+                icon: generateKWGramSectionIcon(systemName: "person.fill", backgroundColor: UIColor(rgb: 0x5856d6)),
+                title: "Профиль",
+                titleFont: .bold,
+                label: "",
+                additionalDetailLabel: "Раздел пока пуст",
+                sectionId: self.section,
+                style: .blocks,
+                action: {
+                    arguments.openProfile()
+                }
+            )
         case let .status(activeCount, totalCount):
             return ItemListDisclosureItem(
                 presentationData: presentationData,
@@ -238,18 +256,20 @@ private final class KWGramHubArguments {
     let openAppearance: () -> Void
     let openAdditional: () -> Void
     let openAdmin: () -> Void
+    let openProfile: () -> Void
     let openStatus: () -> Void
     let openAbout: () -> Void
     let openSupport: () -> Void
     let openSearch: () -> Void
 
-    init(openGifts: @escaping () -> Void, openMessages: @escaping () -> Void, openGhost: @escaping () -> Void, openAppearance: @escaping () -> Void, openAdditional: @escaping () -> Void, openAdmin: @escaping () -> Void, openStatus: @escaping () -> Void, openAbout: @escaping () -> Void, openSearch: @escaping () -> Void, openSupport: @escaping () -> Void) {
+    init(openGifts: @escaping () -> Void, openMessages: @escaping () -> Void, openGhost: @escaping () -> Void, openAppearance: @escaping () -> Void, openAdditional: @escaping () -> Void, openAdmin: @escaping () -> Void, openProfile: @escaping () -> Void, openStatus: @escaping () -> Void, openAbout: @escaping () -> Void, openSearch: @escaping () -> Void, openSupport: @escaping () -> Void) {
         self.openGifts = openGifts
         self.openMessages = openMessages
         self.openGhost = openGhost
         self.openAppearance = openAppearance
         self.openAdditional = openAdditional
         self.openAdmin = openAdmin
+        self.openProfile = openProfile
         self.openStatus = openStatus
         self.openAbout = openAbout
         self.openSupport = openSupport
@@ -257,16 +277,10 @@ private final class KWGramHubArguments {
     }
 }
 
-/// KW Gram's own Telegram channel and the person to reach for support/donations — kept in
-/// one place since the "KW Gram Team" row's action sheet is the only thing that uses them.
+/// KW Gram's own Telegram channel and the support/donations contact — kept in one place
+/// since the "KW Gram Team" row's action sheet is the only thing that uses them.
 private let kwGramChannelUrl = "https://t.me/FLYXSE_README"
-private let kwGramSupportUsername = "kopimastera"
-
-private func kwGramDonateUrl(currencyLabel: String) -> String {
-    let text = "Привет, я решил поддержать твой проект, поэтому хочу тебе дать \(currencyLabel), жду твоего ответа."
-    let encoded = text.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? text
-    return "https://t.me/\(kwGramSupportUsername)?text=\(encoded)"
-}
+private let kwGramDonateUrl = "https://t.me/FLYXSE"
 
 private func kwGramHubEntries(settings: KWGramSettings, profileVisuals: KWGramProfileVisualState, isAdmin: Bool) -> [KWGramHubEntry] {
     let toggles = [
@@ -293,6 +307,7 @@ private func kwGramHubEntries(settings: KWGramSettings, profileVisuals: KWGramPr
     if isAdmin {
         entries.append(.admin)
     }
+    entries.append(.profile)
     entries.append(.status(activeCount, toggles.count))
     entries.append(.team)
     return entries
@@ -331,6 +346,9 @@ public func kwGramSettingsController(context: AccountContext) -> ViewController 
         openAdmin: {
             pushControllerImpl?(kwGramAdminController(context: context))
         },
+        openProfile: {
+            pushControllerImpl?(kwGramPlaceholderController(context: context, title: "Профиль"))
+        },
         openStatus: {
             pushControllerImpl?(kwGramStatusController(context: context))
         },
@@ -350,34 +368,11 @@ public func kwGramSettingsController(context: AccountContext) -> ViewController 
                 context.sharedContext.openExternalUrl(context: context, urlContext: .generic, url: kwGramChannelUrl, forceExternal: false, presentationData: presentationData, navigationController: navigationController, dismissInput: {})
             }
 
-            let openDonateChat: (String) -> Void = { currencyLabel in
+            let openDonateChat: () -> Void = {
                 guard let navigationController = navigationControllerImpl?() else {
                     return
                 }
-                context.sharedContext.openExternalUrl(context: context, urlContext: .generic, url: kwGramDonateUrl(currencyLabel: currencyLabel), forceExternal: false, presentationData: presentationData, navigationController: navigationController, dismissInput: {})
-            }
-
-            let showDonateOptions: () -> Void = {
-                let donateSheet = ActionSheetController(presentationData: presentationData)
-                donateSheet.setItemGroups([
-                    ActionSheetItemGroup(items: [
-                        ActionSheetTextItem(title: "Чем хочешь поддержать?"),
-                        ActionSheetButtonItem(title: "⭐ Telegram Stars", color: .accent, action: { [weak donateSheet] in
-                            donateSheet?.dismissAnimated()
-                            openDonateChat("звёзды")
-                        }),
-                        ActionSheetButtonItem(title: "₽ Рубли", color: .accent, action: { [weak donateSheet] in
-                            donateSheet?.dismissAnimated()
-                            openDonateChat("рубли")
-                        })
-                    ]),
-                    ActionSheetItemGroup(items: [
-                        ActionSheetButtonItem(title: presentationData.strings.Common_Cancel, color: .accent, font: .bold, action: { [weak donateSheet] in
-                            donateSheet?.dismissAnimated()
-                        })
-                    ])
-                ])
-                presentControllerImpl?(donateSheet)
+                context.sharedContext.openExternalUrl(context: context, urlContext: .generic, url: kwGramDonateUrl, forceExternal: false, presentationData: presentationData, navigationController: navigationController, dismissInput: {})
             }
 
             let mainSheet = ActionSheetController(presentationData: presentationData)
@@ -389,7 +384,7 @@ public func kwGramSettingsController(context: AccountContext) -> ViewController 
                     }),
                     ActionSheetButtonItem(title: "Поддержать проект 💜", color: .accent, action: { [weak mainSheet] in
                         mainSheet?.dismissAnimated()
-                        showDonateOptions()
+                        openDonateChat()
                     })
                 ]),
                 ActionSheetItemGroup(items: [
