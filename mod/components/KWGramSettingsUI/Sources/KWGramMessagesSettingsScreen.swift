@@ -17,13 +17,15 @@ private final class KWGramMessagesArguments {
     let toggleVisualEdit: (Bool) -> Void
     let openHistory: () -> Void
     let clearHistory: () -> Void
+    let exportChat: () -> Void
 
-    init(toggleAntiDelete: @escaping (Bool) -> Void, openExclusions: @escaping () -> Void, toggleVisualEdit: @escaping (Bool) -> Void, openHistory: @escaping () -> Void, clearHistory: @escaping () -> Void) {
+    init(toggleAntiDelete: @escaping (Bool) -> Void, openExclusions: @escaping () -> Void, toggleVisualEdit: @escaping (Bool) -> Void, openHistory: @escaping () -> Void, clearHistory: @escaping () -> Void, exportChat: @escaping () -> Void) {
         self.toggleAntiDelete = toggleAntiDelete
         self.openExclusions = openExclusions
         self.toggleVisualEdit = toggleVisualEdit
         self.openHistory = openHistory
         self.clearHistory = clearHistory
+        self.exportChat = exportChat
     }
 }
 
@@ -32,6 +34,7 @@ private enum KWGramMessagesSection: Int32 {
     case antiDelete
     case visualEdit
     case history
+    case export
 }
 
 private enum KWGramMessagesEntry: ItemListNodeEntry {
@@ -49,6 +52,10 @@ private enum KWGramMessagesEntry: ItemListNodeEntry {
     case clearHistory(String, Bool)
     case historyFooter(String)
 
+    case exportHeader(String)
+    case exportChat(String)
+    case exportFooter(String)
+
     var section: ItemListSectionId {
         switch self {
         case .aboutText:
@@ -59,6 +66,8 @@ private enum KWGramMessagesEntry: ItemListNodeEntry {
             return KWGramMessagesSection.visualEdit.rawValue
         case .historyHeader, .historyList, .clearHistory, .historyFooter:
             return KWGramMessagesSection.history.rawValue
+        case .exportHeader, .exportChat, .exportFooter:
+            return KWGramMessagesSection.export.rawValue
         }
     }
 
@@ -84,6 +93,12 @@ private enum KWGramMessagesEntry: ItemListNodeEntry {
             return 8
         case .historyFooter:
             return 9
+        case .exportHeader:
+            return 10
+        case .exportChat:
+            return 11
+        case .exportFooter:
+            return 12
         }
     }
 
@@ -94,12 +109,12 @@ private enum KWGramMessagesEntry: ItemListNodeEntry {
     func item(presentationData: ItemListPresentationData, arguments: Any) -> ListViewItem {
         let arguments = arguments as! KWGramMessagesArguments
         switch self {
-        case let .aboutText(text), let .antiDeleteFooter(text), let .visualEditFooter(text), let .historyFooter(text):
+        case let .aboutText(text), let .antiDeleteFooter(text), let .visualEditFooter(text), let .historyFooter(text), let .exportFooter(text):
             return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
-        case let .historyHeader(text):
+        case let .historyHeader(text), let .exportHeader(text):
             return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
         case let .antiDeleteToggle(title, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, text: "Сообщения, удалённые собеседником, остаются видимыми у вас.", value: value, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.toggleAntiDelete(value)
             })
         case let .exclusionsRow(title, label):
@@ -107,7 +122,7 @@ private enum KWGramMessagesEntry: ItemListNodeEntry {
                 arguments.openExclusions()
             })
         case let .visualEditToggle(title, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, text: "Изменяет текст чужого сообщения только на вашем устройстве.", value: value, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.toggleVisualEdit(value)
             })
         case let .historyList(title, label):
@@ -117,6 +132,10 @@ private enum KWGramMessagesEntry: ItemListNodeEntry {
         case let .clearHistory(title, enabled):
             return ItemListActionItem(presentationData: presentationData, systemStyle: .glass, title: title, kind: enabled ? .destructive : .disabled, alignment: .natural, sectionId: self.section, style: .blocks, action: {
                 arguments.clearHistory()
+            })
+        case let .exportChat(title):
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: title, label: "", sectionId: self.section, style: .blocks, action: {
+                arguments.exportChat()
             })
         }
     }
@@ -139,6 +158,10 @@ private func kwGramMessagesEntries(settings: KWGramSettings, historyCount: Int) 
     entries.append(.clearHistory("Очистить всю историю", historyCount > 0))
     entries.append(.historyFooter("Уберёт восстановленные сообщения из чатов. Отменить нельзя."))
 
+    entries.append(.exportHeader("ЭКСПОРТ"))
+    entries.append(.exportChat("Экспорт чата в .txt"))
+    entries.append(.exportFooter("Выбери чат — сохраню его историю в .txt и отправлю файл в Избранное."))
+
     return entries
 }
 
@@ -148,6 +171,7 @@ private func kwGramMessagesEntries(settings: KWGramSettings, historyCount: Int) 
 public func kwGramMessagesSettingsController(context: AccountContext) -> ViewController {
     var presentTooltipImpl: ((String) -> Void)?
     var pushControllerImpl: ((ViewController) -> Void)?
+    var presentControllerImpl: ((ViewController) -> Void)?
 
     let arguments = KWGramMessagesArguments(
         toggleAntiDelete: { value in
@@ -178,6 +202,20 @@ public func kwGramMessagesSettingsController(context: AccountContext) -> ViewCon
             |> deliverOnMainQueue).start(completed: {
                 presentTooltipImpl?("История очищена.")
             })
+        },
+        exportChat: {
+            guard let presentTooltipImpl, let presentControllerImpl else {
+                return
+            }
+            kwGramExportChatAction(
+                context: context,
+                presentController: { c in
+                    presentControllerImpl(c)
+                },
+                presentTooltip: { text in
+                    presentTooltipImpl(text)
+                }
+            )
         }
     )
 
@@ -208,6 +246,9 @@ public func kwGramMessagesSettingsController(context: AccountContext) -> ViewCon
     let controller = ItemListController(context: context, state: signal)
     pushControllerImpl = { [weak controller] c in
         controller?.push(c)
+    }
+    presentControllerImpl = { [weak controller] c in
+        controller?.present(c, in: .window(.root))
     }
     presentTooltipImpl = { [weak controller] text in
         guard let controller else {

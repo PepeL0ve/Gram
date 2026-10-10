@@ -114,7 +114,7 @@ private enum KWGramHubEntry: ItemListNodeEntry {
                 presentationData: presentationData,
                 systemStyle: .glass,
                 icon: generateKWGramSectionIcon(systemName: "gift.fill", backgroundColor: UIColor(rgb: 0x8e44ec)),
-                title: "Подарки",
+                title: "Визуал",
                 titleFont: .bold,
                 label: "",
                 additionalDetailLabel: "Управление подарками и визуалами",

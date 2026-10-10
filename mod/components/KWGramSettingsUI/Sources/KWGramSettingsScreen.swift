@@ -194,7 +194,7 @@ private enum KWGramSettingsEntry: ItemListNodeEntry {
         let arguments = arguments as! KWGramSettingsArguments
         switch self {
         case let .visualToggle(value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, icon: generateKWGramSectionIcon(systemName: "wand.and.stars", backgroundColor: UIColor(rgb: 0x8e44ec)), title: "Включить визуалку", value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, icon: generateKWGramSectionIcon(systemName: "wand.and.stars", backgroundColor: UIColor(rgb: 0x8e44ec)), title: "Включить визуалку", text: "Главный выключатель раздела. Выключи — и вкладки подарков и локальные балансы перестанут действовать.", value: value, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.toggleVisual(value)
             })
         case let .visualFooter(text):
@@ -206,7 +206,7 @@ private enum KWGramSettingsEntry: ItemListNodeEntry {
         case let .phantomGiftsFooter(text), let .starsBalanceFooter(text), let .tonBalanceFooter(text), let .localRublesFooter(text), let .fromHimGiftsFooter(text), let .collectionFooter(text), let .ledgerFooter(text), let .resetBalancesFooter(text), let .storageFooter(text):
             return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
         case let .localRublesPurchaseToggle(title, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, text: "Включает локальную оплату SberPay вместо настоящей покупки звёзд.", value: value, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.toggleLocalRublesPurchase(value)
             })
         case let .localRublesBalance(title, label):
@@ -214,15 +214,15 @@ private enum KWGramSettingsEntry: ItemListNodeEntry {
                 arguments.topUpLocalRubles()
             })
         case let .phantomGiftsToggle(title, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, text: "Показывает вкладку «Подарок ему» в реальном экране отправки. Покупка визуальная: настоящие Stars/TON не списываются.", value: value, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.togglePhantomGifts(value)
             })
         case let .fakeStarsDisplayToggle(title, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, text: "Показывать свой баланс звёзд вместо настоящего — в отправке подарка и настройках.", value: value, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.toggleFakeStarsDisplay(value)
             })
         case let .fakeTonDisplayToggle(title, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, text: "Показывать свой баланс TON/GRAM вместо настоящего.", value: value, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.toggleFakeTonDisplay(value)
             })
         case let .starsBalance(title, label):
@@ -234,7 +234,7 @@ private enum KWGramSettingsEntry: ItemListNodeEntry {
                 arguments.editTonBalance()
             })
         case let .fromHimGiftsToggle(title, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, text: "Добавляет вкладку «Подарок мне» — подарок выглядит подаренным вам собеседником.", value: value, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.toggleFromHimGifts(value)
             })
         case let .collectionMarket(title, label):
@@ -422,7 +422,7 @@ private func kwGramSettingsEntries(settings: KWGramSettings, phantomGiftCount: I
     return entries
 }
 
-/// The "Подарки" section: everything about the "Подарок" tab and KW Gram's local play-money
+/// The "Визуал" section: everything about the "Подарок" tab and KW Gram's local play-money
 /// balances. Split out of what used to be the single KW Gram settings screen — see
 /// `KWGramHubScreen.swift` for the 5-section hub this is now pushed from.
 public func kwGramGiftsSettingsController(context: AccountContext) -> ViewController {
@@ -597,7 +597,7 @@ public func kwGramGiftsSettingsController(context: AccountContext) -> ViewContro
     |> map { presentationData, settings, phantomGifts -> (ItemListControllerState, (ItemListNodeState, Any)) in
         let controllerState = ItemListControllerState(
             presentationData: ItemListPresentationData(presentationData),
-            title: .text("Подарки"),
+            title: .text("Визуал"),
             leftNavigationButton: nil,
             rightNavigationButton: nil,
             backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back),

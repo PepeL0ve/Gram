@@ -142,13 +142,13 @@ public func kwGramSearchController(context: AccountContext) -> ViewController {
     let openGiftMarket: () -> Void = { pushControllerImpl?(kwGramGiftMarketController(context: context)) }
 
     let index: [KWGramSearchItem] = [
-        KWGramSearchItem(title: "Подарок ему", subtitle: "Визуальная отправка подарка, без списания Stars/TON", sectionName: "Подарки", keywords: "gift подарки маркет фантом", open: openGifts),
-        KWGramSearchItem(title: "Подарок мне", subtitle: "Подарок выглядит подаренным вам собеседником", sectionName: "Подарки", keywords: "от него gift получить", open: openGifts),
-        KWGramSearchItem(title: "Локальные звёзды", subtitle: "Показывать свой баланс звёзд вместо настоящего", sectionName: "Подарки", keywords: "stars баланс фантом деньги", open: openGifts),
-        KWGramSearchItem(title: "Локальные TON/GRAM", subtitle: "Показывать свой баланс TON/GRAM вместо настоящего", sectionName: "Подарки", keywords: "ton gram крипто баланс", open: openGifts),
-        KWGramSearchItem(title: "Локальные рубли", subtitle: "Локальная карта для покупки звёзд за рубли", sectionName: "Подарки", keywords: "рубли карта покупка звёзд", open: openGifts),
-        KWGramSearchItem(title: "История и статистика", subtitle: "Локальный журнал Stars/TON/рублей: пополнения, покупки, продажи", sectionName: "Подарки", keywords: "ledger история статистика пополнения покупки продажи журнал", open: openGifts),
-        KWGramSearchItem(title: "Маркет подарков", subtitle: "Локальный маркет: выставить и снять подарки", sectionName: "Подарки", keywords: "market маркет продать выставить подарки", open: openGiftMarket),
+        KWGramSearchItem(title: "Подарок ему", subtitle: "Визуальная отправка подарка, без списания Stars/TON", sectionName: "Визуал", keywords: "gift подарки маркет фантом", open: openGifts),
+        KWGramSearchItem(title: "Подарок мне", subtitle: "Подарок выглядит подаренным вам собеседником", sectionName: "Визуал", keywords: "от него gift получить", open: openGifts),
+        KWGramSearchItem(title: "Локальные звёзды", subtitle: "Показывать свой баланс звёзд вместо настоящего", sectionName: "Визуал", keywords: "stars баланс фантом деньги", open: openGifts),
+        KWGramSearchItem(title: "Локальные TON/GRAM", subtitle: "Показывать свой баланс TON/GRAM вместо настоящего", sectionName: "Визуал", keywords: "ton gram крипто баланс", open: openGifts),
+        KWGramSearchItem(title: "Локальные рубли", subtitle: "Локальная карта для покупки звёзд за рубли", sectionName: "Визуал", keywords: "рубли карта покупка звёзд", open: openGifts),
+        KWGramSearchItem(title: "История и статистика", subtitle: "Локальный журнал Stars/TON/рублей: пополнения, покупки, продажи", sectionName: "Визуал", keywords: "ledger история статистика пополнения покупки продажи журнал", open: openGifts),
+        KWGramSearchItem(title: "Маркет подарков", subtitle: "Локальный маркет: выставить и снять подарки", sectionName: "Визуал", keywords: "market маркет продать выставить подарки", open: openGiftMarket),
         KWGramSearchItem(title: "Визуальный +888", subtitle: "Локально заменить свой номер в профиле", sectionName: "Профиль", keywords: "888 номер anonymous number профиль", open: openProfile),
         KWGramSearchItem(title: "Визуальный рейтинг", subtitle: "Локальный рейтинг и очки в своём профиле", sectionName: "Профиль", keywords: "rating рейтинг очки уровень профиль", open: openProfile),
         KWGramSearchItem(title: "Время в ник", subtitle: "Показывать московское время в имени вместо фамилии", sectionName: "Профиль", keywords: "время ник имя фамилия москва время nickname", open: openProfile),

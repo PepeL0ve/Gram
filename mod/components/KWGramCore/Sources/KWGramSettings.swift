@@ -498,6 +498,7 @@ public enum KWGramPreferencesKeys {
     public static let appearance = key(900_600)
     public static let behavior = key(900_700)
     public static let fakeAdmin = key(900_800)
+    public static let personalColors = key(900_900)
 }
 
 public enum KWGramCore {
