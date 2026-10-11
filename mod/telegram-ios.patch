@@ -20046,7 +20046,7 @@ index 4d971fd33..ac92d808c 100644
 +                    }
 +                }
 +                let _ = (nameColorSignal
-+                |> mapToSignal { nameColor -> Signal<Void, UpdateNameColorAndEmojiError> in
++                |> mapToSignalPromotingError { nameColor -> Signal<Void, UpdateNameColorAndEmojiError> in
 +                    return engine.accountData.updateNameColorAndEmoji(nameColor: nameColor, profileColor: profileColor, profileBackgroundEmojiId: nil)
 +                }).start()
 +            }
