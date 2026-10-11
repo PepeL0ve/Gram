@@ -48,10 +48,6 @@ public enum KWGramPersonalColorStore {
         |> distinctUntilChanged
     }
 
-    public static func read(postbox: Postbox) -> KWGramPersonalColors {
-        return read(transaction: postbox.transaction { $0 })
-    }
-
     public static func updateInteractively(postbox: Postbox, _ f: @escaping (KWGramPersonalColors) -> KWGramPersonalColors) -> Signal<Never, NoError> {
         return postbox.transaction { transaction -> Void in
             update(transaction: transaction, f)

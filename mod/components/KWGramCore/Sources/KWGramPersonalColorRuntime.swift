@@ -24,6 +24,7 @@ public final class KWGramPersonalColorRuntime {
 
     private let apply: Apply
     private var disposable: Disposable?
+    private let onceDisposable = MetaDisposable()
 
     public init(apply: @escaping Apply) {
         self.apply = apply
@@ -31,6 +32,7 @@ public final class KWGramPersonalColorRuntime {
 
     deinit {
         self.disposable?.dispose()
+        self.onceDisposable.dispose()
     }
 
     /// Subscribe to the stored colours and apply them on every change. Also applies once on
@@ -47,9 +49,16 @@ public final class KWGramPersonalColorRuntime {
         return d
     }
 
-    /// Apply the currently stored colours once, immediately.
+    /// Apply the currently stored colours once, immediately. The value is read through the
+    /// postbox signal (the store has no synchronous read — `postbox.transaction` hands back a
+    /// `Signal`), so this is a one-shot subscription rather than a blocking read.
     public func applyNow(postbox: Postbox) {
-        self.applyColor(KWGramPersonalColorStore.read(postbox: postbox))
+        let d = (KWGramPersonalColorStore.signal(postbox: postbox)
+        |> take(1)
+        |> deliverOnMainQueue).start(next: { [weak self] colors in
+            self?.applyColor(colors)
+        })
+        self.onceDisposable.set(d)
     }
 
     private func applyColor(_ colors: KWGramPersonalColors) {

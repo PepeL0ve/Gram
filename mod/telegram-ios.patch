@@ -20024,31 +20024,31 @@ index 4d971fd33..ac92d808c 100644
 +                guard nameIndex != nil || profileIndex != nil else {
 +                    return
 +                }
-+                // The account's own PeerColor (preset or collectible). The API requires a
-+                // nameColor on every call, so when the user has picked no name colour (or a
-+                // collectible one) we pass the current value through unchanged instead of
-+                // clobbering it with a preset fallback.
-+                let readCurrentNameColor: () -> UpdateNameColor? = {
-+                    if let user = account.postbox.transaction({ $0.getPeer(account.peerId) as? TelegramUser }) as? TelegramUser, let current = user.nameColor {
-+                        switch current {
-+                        case let .preset(color):
-+                            return .preset(color: color, backgroundEmojiId: user.backgroundEmojiId)
-+                        case let .collectible(color):
-+                            return .collectible(color)
-+                        }
-+                    }
-+                    return nil
-+                }
-+                let nameColor: UpdateNameColor
-+                if let nameIndex {
-+                    nameColor = .preset(color: PeerNameColor(rawValue: nameIndex), backgroundEmojiId: nil)
-+                } else if let current = readCurrentNameColor() {
-+                    nameColor = current
-+                } else {
-+                    nameColor = .preset(color: .blue, backgroundEmojiId: nil)
-+                }
 +                let profileColor: PeerNameColor? = profileIndex.map { PeerNameColor(rawValue: $0) }
-+                let _ = engine.accountData.updateNameColorAndEmoji(nameColor: nameColor, profileColor: profileColor, profileBackgroundEmojiId: nil).start()
++                // The API requires a nameColor on every call. When the user picked no name
++                // colour — or the account runs a collectible one — the current value is read
++                // back from the postbox inside a transaction and passed through unchanged,
++                // instead of clobbering it with a preset fallback.
++                let nameColorSignal: Signal<UpdateNameColor, NoError>
++                if let nameIndex {
++                    nameColorSignal = .single(.preset(color: PeerNameColor(rawValue: nameIndex), backgroundEmojiId: nil))
++                } else {
++                    nameColorSignal = account.postbox.transaction { transaction -> UpdateNameColor in
++                        if let user = transaction.getPeer(account.peerId) as? TelegramUser, let current = user.nameColor {
++                            switch current {
++                            case let .preset(color):
++                                return .preset(color: color, backgroundEmojiId: user.backgroundEmojiId)
++                            case let .collectible(color):
++                                return .collectible(color)
++                            }
++                        }
++                        return .preset(color: .blue, backgroundEmojiId: nil)
++                    }
++                }
++                let _ = (nameColorSignal
++                |> mapToSignal { nameColor -> Signal<Void, UpdateNameColorAndEmojiError> in
++                    return engine.accountData.updateNameColorAndEmoji(nameColor: nameColor, profileColor: profileColor, profileBackgroundEmojiId: nil)
++                }).start()
 +            }
 +            let personalColorRuntime = KWGramPersonalColorRuntime(apply: applyColor)
 +            self.kwGramPersonalColorDisposable.set(personalColorRuntime.observe(postbox: account.postbox))
