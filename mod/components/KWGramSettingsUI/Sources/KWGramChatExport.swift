@@ -64,16 +64,16 @@ private func kwGramLoadAllMessages(context: AccountContext, peerId: PeerId, thre
                     topTaggedMessageIdNamespaces: [Namespaces.Message.Cloud],
                     tag: nil,
                     appendMessagesFromTheSameGroup: false,
-                    namespaces: .just(Namespaces.Message.Cloud),
+                    namespaces: .just([Namespaces.Message.Cloud]),
                     orderStatistics: [],
                     additionalData: []
                 )
             } else {
                 pageSignal = context.account.postbox.aroundMessageHistoryViewForLocation(
                     location,
+                    anchor: .upperBound,
                     ignoreMessagesInTimestampRange: nil,
                     ignoreMessageIds: [],
-                    anchor: .upperBound,
                     count: pageSize,
                     trackHoles: true,
                     clipHoles: false,
@@ -82,7 +82,7 @@ private func kwGramLoadAllMessages(context: AccountContext, peerId: PeerId, thre
                     topTaggedMessageIdNamespaces: [Namespaces.Message.Cloud],
                     tag: nil,
                     appendMessagesFromTheSameGroup: false,
-                    namespaces: .just(Namespaces.Message.Cloud),
+                    namespaces: .just([Namespaces.Message.Cloud]),
                     orderStatistics: [],
                     additionalData: []
                 )
@@ -222,24 +222,28 @@ public func kwGramExportChatAction(context: AccountContext, presentController: @
         presentTooltip("Готовлю экспорт…")
 
         let accountPeerId = context.account.peerId
-        let title = EnginePeer(PeerId(peerId)).compactDisplayTitle
-        let safeTitle = title.isEmpty ? "chat" : title
 
-        let _ = (kwGramLoadAllMessages(context: context, peerId: peerId, threadId: nil)
-        |> deliverOnMainQueue).start(next: { messages in
-            if messages.isEmpty {
-                presentTooltip("В этом чате нет сообщений для экспорта.")
-                return
-            }
-            let body = kwGramExportText(messages: messages, accountPeerId: accountPeerId)
-            let filename = "\(safeTitle).txt"
-            kwGramSendExportToSavedMessages(context: context, text: body, filename: filename) { sent in
-                if sent {
-                    presentTooltip("«\(filename)» отправлен в Избранное.")
-                } else {
-                    presentTooltip("Не удалось сохранить файл экспорта.")
+        let _ = (context.engine.data.get(TelegramEngine.EngineData.Item.Peer.Peer(id: peerId))
+        |> deliverOnMainQueue).start(next: { peer in
+            let title = peer?.compactDisplayTitle ?? ""
+            let safeTitle = title.isEmpty ? "chat" : title
+
+            let _ = (kwGramLoadAllMessages(context: context, peerId: peerId, threadId: nil)
+            |> deliverOnMainQueue).start(next: { messages in
+                if messages.isEmpty {
+                    presentTooltip("В этом чате нет сообщений для экспорта.")
+                    return
                 }
-            }
+                let body = kwGramExportText(messages: messages, accountPeerId: accountPeerId)
+                let filename = "\(safeTitle).txt"
+                kwGramSendExportToSavedMessages(context: context, text: body, filename: filename) { sent in
+                    if sent {
+                        presentTooltip("«\(filename)» отправлен в Избранное.")
+                    } else {
+                        presentTooltip("Не удалось сохранить файл экспорта.")
+                    }
+                }
+            })
         })
     })
 
