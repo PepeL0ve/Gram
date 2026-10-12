@@ -10,9 +10,11 @@ import Foundation
 /// Bump the appropriate digit on every feature/fix release and rewrite
 /// `kwGramChangelogText` to describe what's actually in that build. This is the one place
 /// both screens read from, so a single edit here keeps them in sync.
-public let kwGramVersionString = "v1.2.0"
+public let kwGramVersionString = "v1.3.0"
 
 public let kwGramChangelogText = """
+MonoColor UI: в «Внешний вид» добавлен переключатель «MonoColor UI» — полностью перекрашивает твой интерфейс в один цвет: аватарки, истории, списки чатов, метки папок и цвета профиля — всё одного тона. Цвет выбирается из палитры или задаётся вручную (#RRGGBB), по умолчанию — небесный #4FAEDE. Выключается тем же переключателем, «Сбросить внешний вид» возвращает стандартный вид.
+
 Переименование: раздел «Подарки» теперь называется «Визуал» — так понятнее, что это визуальные фишки, а не магазин. Внутри всё на месте: подарки, локальные балансы, коллекция, маркет, журналы.
 
 Персональные цвета: в «Профиль» добавлен выбор цвета имени и цвета фона профиля из палитры Telegram. Краска применяется к вашему аккаунту и восстанавливается, если Telegram её сбросит.

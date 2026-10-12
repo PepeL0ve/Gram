@@ -329,12 +329,16 @@ public struct KWGramAppearanceState: Codable, Equatable {
     public var minimalMode: Bool
     public var avatarShape: Int32
     public var profileGradientHex: String
+    // KW Gram "MonoColor UI": repaint avatars, story rings, name colours, folder tags and
+    // profile colours in one single tone (`monoColorHex`, "#RRGGBB") while enabled.
+    public var monoColorEnabled: Bool
+    public var monoColorHex: String
 
     public static var `default`: KWGramAppearanceState {
-        return KWGramAppearanceState(preset: .standard, bubbleRadius: 16, bubbleOpacityPercent: 100, chatDensity: 1, blurStrength: 40, animationsMode: 1, reduceAnimations: false, oledBlack: false, compactHub: false, monochromeIcons: false, showChatPreview: true, showChatDate: true, avatarSize: 48, profileHeaderBlur: 30, incomingColorHex: "#FFFFFF", outgoingColorHex: "#DCF8C6", inputRadius: 22, cardScalePercent: 100, iconScalePercent: 100, textScalePercent: 100, boldHeaders: true, glassCards: false, minimalMode: false, avatarShape: 0, profileGradientHex: "#2AABEE,#8774E1")
+        return KWGramAppearanceState(preset: .standard, bubbleRadius: 16, bubbleOpacityPercent: 100, chatDensity: 1, blurStrength: 40, animationsMode: 1, reduceAnimations: false, oledBlack: false, compactHub: false, monochromeIcons: false, showChatPreview: true, showChatDate: true, avatarSize: 48, profileHeaderBlur: 30, incomingColorHex: "#FFFFFF", outgoingColorHex: "#DCF8C6", inputRadius: 22, cardScalePercent: 100, iconScalePercent: 100, textScalePercent: 100, boldHeaders: true, glassCards: false, minimalMode: false, avatarShape: 0, profileGradientHex: "#2AABEE,#8774E1", monoColorEnabled: false, monoColorHex: "#4FAEDE")
     }
 
-    public init(preset: KWGramAppearancePreset, bubbleRadius: Int32, bubbleOpacityPercent: Int32, chatDensity: Int32, blurStrength: Int32, animationsMode: Int32, reduceAnimations: Bool, oledBlack: Bool, compactHub: Bool, monochromeIcons: Bool, showChatPreview: Bool, showChatDate: Bool, avatarSize: Int32, profileHeaderBlur: Int32, incomingColorHex: String, outgoingColorHex: String, inputRadius: Int32, cardScalePercent: Int32, iconScalePercent: Int32, textScalePercent: Int32, boldHeaders: Bool, glassCards: Bool, minimalMode: Bool, avatarShape: Int32, profileGradientHex: String) {
+    public init(preset: KWGramAppearancePreset, bubbleRadius: Int32, bubbleOpacityPercent: Int32, chatDensity: Int32, blurStrength: Int32, animationsMode: Int32, reduceAnimations: Bool, oledBlack: Bool, compactHub: Bool, monochromeIcons: Bool, showChatPreview: Bool, showChatDate: Bool, avatarSize: Int32, profileHeaderBlur: Int32, incomingColorHex: String, outgoingColorHex: String, inputRadius: Int32, cardScalePercent: Int32, iconScalePercent: Int32, textScalePercent: Int32, boldHeaders: Bool, glassCards: Bool, minimalMode: Bool, avatarShape: Int32, profileGradientHex: String, monoColorEnabled: Bool, monoColorHex: String) {
         self.preset = preset
         self.bubbleRadius = bubbleRadius
         self.bubbleOpacityPercent = bubbleOpacityPercent
@@ -360,6 +364,8 @@ public struct KWGramAppearanceState: Codable, Equatable {
         self.minimalMode = minimalMode
         self.avatarShape = avatarShape
         self.profileGradientHex = profileGradientHex
+        self.monoColorEnabled = monoColorEnabled
+        self.monoColorHex = monoColorHex
     }
 
     public init(from decoder: Decoder) throws {
@@ -390,6 +396,8 @@ public struct KWGramAppearanceState: Codable, Equatable {
         self.minimalMode = try c.decodeIfPresent(Bool.self, forKey: .minimalMode) ?? d.minimalMode
         self.avatarShape = try c.decodeIfPresent(Int32.self, forKey: .avatarShape) ?? d.avatarShape
         self.profileGradientHex = try c.decodeIfPresent(String.self, forKey: .profileGradientHex) ?? d.profileGradientHex
+        self.monoColorEnabled = try c.decodeIfPresent(Bool.self, forKey: .monoColorEnabled) ?? d.monoColorEnabled
+        self.monoColorHex = try c.decodeIfPresent(String.self, forKey: .monoColorHex) ?? d.monoColorHex
     }
 }
 
