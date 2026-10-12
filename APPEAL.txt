@@ -1,0 +1,127 @@
+=====================================================================
+ APPEAL — GitHub account suspension (username: FLYXSE)
+=====================================================================
+
+>> HOW TO SEND
+1. Fill in the placeholders in [SQUARE BRACKETS] in the English text below.
+2. Send it from the email that is registered on the GitHub account.
+   Recipient: support@github.com
+   Subject:    Appeal: account suspension — username FLYXSE
+   (or use the form without login: https://support.github.com/contact/account
+    → "Appeal an account suspension" and paste the same text)
+3. Wait for the reply in the same email thread. Do not create a second
+   account while the appeal is pending — it makes things worse.
+4. The release with the IPA will most likely have to be deleted. If you
+   do NOT want to delete it, remove paragraph 4 from the letter before
+   sending — do not promise something you will not do.
+
+
+=====================================================================
+ ENGLISH TEXT (this is what you send)
+=====================================================================
+
+Hello GitHub Support,
+
+My GitHub username is FLYXSE, and the email registered to the account is
+[YOUR REGISTERED EMAIL]. I am the owner of this account and I am writing
+to appeal its suspension.
+
+When I tried to push to one of my repositories, the server returned:
+"Your account is suspended. Please visit https://support.github.com for
+more information." All API requests now return 403, and my profile page
+is not visible to visitors.
+
+I believe the suspension may be connected to a release I published in
+the repository FLYXSE/KW-Gram: a compiled IPA file
+(KW-Gram-v1.2.0.ipa, about 76 MB) attached to the tag v1.2.0.
+
+Some context: KW-Gram is my personal modification of Telegram-iOS, which
+is distributed as open source. I build it only for my own study of the
+codebase and for private use on my own devices. I have no commercial
+intentions and I do not wish to infringe anyone's rights.
+
+If the published binary is what triggered the suspension, I will delete
+that release and all binary assets immediately. Please let me know what
+else I should remove or change, and I will do it.
+
+To confirm that I own this account:
+  - username: FLYXSE
+  - email: [YOUR REGISTERED EMAIL]
+  - approximate registration date: [DATE, e.g. March 2025]
+  - I can provide any other details you need to verify ownership.
+
+I am not aware of intentionally violating the GitHub Terms of Service or
+the Acceptable Use Policies. I kindly ask you to review my account and
+restore my access, or to tell me exactly which rule was broken so I can
+fix it.
+
+Thank you for your time. I look forward to your reply.
+
+Best regards,
+[YOUR NAME]
+username: FLYXSE
+email: [YOUR REGISTERED EMAIL]
+
+
+=====================================================================
+ РУССКИЙ ПЕРЕВОД (для понимания; отправлять английскую версию)
+=====================================================================
+
+Привет, поддержка GitHub,
+
+Мой ник на GitHub — FLYXSE, почта аккаунта — [ТВОЯ ПОЧТА]. Я владелец
+этого аккаунта и пишу по поводу его блокировки.
+
+Когда я пытался сделать push в один из своих репозиториев, сервер
+вернул: «Your account is suspended…». Все запросы к API теперь отдают
+403, а моя страница не видна посетителям.
+
+Причиной, как я предполагаю, мог стать релиз в репозитории
+FLYXSE/KW-Gram: скомпилированный файл IPA (KW-Gram-v1.2.0.ipa,
+около 76 МБ), привязанный к тегу v1.2.0.
+
+Для контекста: KW-Gram — это моё личное модификация Telegram-iOS,
+который распространяется как открытый исходный код. Я собираю его
+только для изучения кода и для личного использования на своих
+устройствах. Коммерческих намерений у меня нет, и я не хочу
+нарушать ничьи права.
+
+Если опубликованный бинарник и вызвал блокировку — я немедленно
+удалю этот релиз и все бинарные ассеты. Скажите, что ещё нужно
+убрать или изменить, и я это сделаю.
+
+Чтобы подтвердить владение аккаунтом:
+  - ник: FLYXSE
+  - почта: [ТВОЯ ПОЧТА]
+  - примерная дата регистрации: [ДАТА]
+  - готов предоставить любые другие данные для проверки.
+
+Мне неизвестно о намеренном нарушении правил GitHub. Прошу проверить
+мой аккаунт и восстановить доступ, либо указать, какое именно правило
+было нарушено, чтобы я мог это исправить.
+
+Спасибо за внимание. Жду ответа.
+
+С уважением,
+[ИМЯ]
+
+
+=====================================================================
+ ЧЕК-ЛИСТ ПЕРЕД ОТПРАВКОЙ
+=====================================================================
+
+[ ] Все [КВАДРАТНЫЕ СКОБКИ] заменены на реальные данные
+[ ] Отправлено с почты, привязанной к аккаунту FLYXSE
+[ ] Никаких вложений, никаких ссылок на сторонние файлы
+[ ] Тон спокойный и вежливый (без обвинений и эмоций)
+[ ] Абзац про удаление релиза оставлен ТОЛЬКО если действительно
+    готовы удалить релиз
+[ ] Проверена папка Спам на предмет письма от GitHub с причиной
+    блокировки — если причина указана, добавьте её в письмо
+    дословно (например, "DMCA" или "abuse")
+[ ] Второй аккаунт НЕ создаётся, пока идёт разблокировка
+[ ] После восстановления: git push origin main (коммит c5d8a79
+    с BUILD.md уже лежит локально) и удалить файл токена .ghtoken
+
+Срок ответа обычно 1–7 дней. Отвечайте строго в той же ветке
+переписки.
