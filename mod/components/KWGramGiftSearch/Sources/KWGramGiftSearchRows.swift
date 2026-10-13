@@ -100,12 +100,22 @@ public enum KWGramGiftSearch {
             if let cached, !cached.isEmpty {
                 return .single(cached)
             }
-            return context.engine.payments.keepStarGiftsUpdated()
-            |> then(
-                context.engine.payments.cachedStarGifts()
-                |> take(1)
-                |> map { $0 ?? [] }
-            )
+            // Nothing cached yet (the user never opened a gifts screen): run the one-shot
+            // catalog update, then re-read the cache once the update has completed. Built
+            // explicitly because `then` needs matching element types and the update signal
+            // is `Signal<Never>` (it emits nothing, only completes).
+            return Signal<[StarGift], NoError> { subscriber in
+                let disposable = MetaDisposable()
+                disposable.set(context.engine.payments.keepStarGiftsUpdated().start(next: { _ in
+                }, completed: {
+                    disposable.set(context.engine.payments.cachedStarGifts().start(next: { value in
+                        subscriber.putNext(value ?? [])
+                    }, completed: {
+                        subscriber.putCompletion()
+                    }))
+                }))
+                return disposable
+            }
         }
     }
 
