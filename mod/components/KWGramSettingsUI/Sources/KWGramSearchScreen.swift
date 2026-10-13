@@ -154,6 +154,7 @@ public func kwGramSearchController(context: AccountContext) -> ViewController {
         KWGramSearchItem(title: "Время в ник", subtitle: "Показывать московское время в имени вместо фамилии", sectionName: "Профиль", keywords: "время ник имя фамилия москва время nickname", open: openProfile),
         KWGramSearchItem(title: "Удалённые сообщения", subtitle: "Сохранять сообщения, удалённые собеседником", sectionName: "Чаты", keywords: "антиделит recover delete восстановление", open: openMessages),
         KWGramSearchItem(title: "Изменить визуально", subtitle: "Локально править текст и подкладывать фейк-контент", sectionName: "Чаты", keywords: "visual edit фейк текст фото", open: openMessages),
+        KWGramSearchItem(title: "Вкладка «Подарки»", subtitle: "Поиск своих коллекций и каталога подарков прямо в глобальном поиске", sectionName: "Чаты", keywords: "поиск подарков вкладка подарки коллекция gift search", open: openMessages),
         KWGramSearchItem(title: "Режим призрака", subtitle: "Скрывать прочтение, онлайн, «печатает», истории", sectionName: "Ghost", keywords: "ghost призрак нечиталка онлайн typing", open: openGhost),
         KWGramSearchItem(title: "Не читать сообщения", subtitle: "Не отправлять отметку о прочтении", sectionName: "Ghost", keywords: "прочтение read receipt галочки", open: openGhost),
         KWGramSearchItem(title: "Не отправлять «онлайн»", subtitle: "Не показывать статус в сети", sectionName: "Ghost", keywords: "онлайн online статус", open: openGhost),

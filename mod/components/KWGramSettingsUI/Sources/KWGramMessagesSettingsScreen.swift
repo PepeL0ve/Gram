@@ -18,14 +18,16 @@ private final class KWGramMessagesArguments {
     let openHistory: () -> Void
     let clearHistory: () -> Void
     let exportChat: () -> Void
+    let toggleGiftSearch: (Bool) -> Void
 
-    init(toggleAntiDelete: @escaping (Bool) -> Void, openExclusions: @escaping () -> Void, toggleVisualEdit: @escaping (Bool) -> Void, openHistory: @escaping () -> Void, clearHistory: @escaping () -> Void, exportChat: @escaping () -> Void) {
+    init(toggleAntiDelete: @escaping (Bool) -> Void, openExclusions: @escaping () -> Void, toggleVisualEdit: @escaping (Bool) -> Void, openHistory: @escaping () -> Void, clearHistory: @escaping () -> Void, exportChat: @escaping () -> Void, toggleGiftSearch: @escaping (Bool) -> Void) {
         self.toggleAntiDelete = toggleAntiDelete
         self.openExclusions = openExclusions
         self.toggleVisualEdit = toggleVisualEdit
         self.openHistory = openHistory
         self.clearHistory = clearHistory
         self.exportChat = exportChat
+        self.toggleGiftSearch = toggleGiftSearch
     }
 }
 
@@ -35,6 +37,7 @@ private enum KWGramMessagesSection: Int32 {
     case visualEdit
     case history
     case export
+    case search
 }
 
 private enum KWGramMessagesEntry: ItemListNodeEntry {
@@ -56,6 +59,10 @@ private enum KWGramMessagesEntry: ItemListNodeEntry {
     case exportChat(String)
     case exportFooter(String)
 
+    case searchHeader(String)
+    case searchToggle(String, Bool)
+    case searchFooter(String)
+
     var section: ItemListSectionId {
         switch self {
         case .aboutText:
@@ -68,6 +75,8 @@ private enum KWGramMessagesEntry: ItemListNodeEntry {
             return KWGramMessagesSection.history.rawValue
         case .exportHeader, .exportChat, .exportFooter:
             return KWGramMessagesSection.export.rawValue
+        case .searchHeader, .searchToggle, .searchFooter:
+            return KWGramMessagesSection.search.rawValue
         }
     }
 
@@ -99,6 +108,12 @@ private enum KWGramMessagesEntry: ItemListNodeEntry {
             return 11
         case .exportFooter:
             return 12
+        case .searchHeader:
+            return 13
+        case .searchToggle:
+            return 14
+        case .searchFooter:
+            return 15
         }
     }
 
@@ -109,9 +124,9 @@ private enum KWGramMessagesEntry: ItemListNodeEntry {
     func item(presentationData: ItemListPresentationData, arguments: Any) -> ListViewItem {
         let arguments = arguments as! KWGramMessagesArguments
         switch self {
-        case let .aboutText(text), let .antiDeleteFooter(text), let .visualEditFooter(text), let .historyFooter(text), let .exportFooter(text):
+        case let .aboutText(text), let .antiDeleteFooter(text), let .visualEditFooter(text), let .historyFooter(text), let .exportFooter(text), let .searchFooter(text):
             return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
-        case let .historyHeader(text), let .exportHeader(text):
+        case let .historyHeader(text), let .exportHeader(text), let .searchHeader(text):
             return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
         case let .antiDeleteToggle(title, value):
             return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, text: "Сообщения, удалённые собеседником, остаются видимыми у вас.", value: value, sectionId: self.section, style: .blocks, updated: { value in
@@ -137,6 +152,10 @@ private enum KWGramMessagesEntry: ItemListNodeEntry {
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: title, label: "", sectionId: self.section, style: .blocks, action: {
                 arguments.exportChat()
             })
+        case let .searchToggle(title, value):
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, text: "Поиск подарков в один клик — добавляет отдельную вкладку «Подарки» прямо в глобальный поиск Telegram", value: value, sectionId: self.section, style: .blocks, updated: { value in
+                arguments.toggleGiftSearch(value)
+            })
         }
     }
 }
@@ -161,6 +180,10 @@ private func kwGramMessagesEntries(settings: KWGramSettings, historyCount: Int) 
     entries.append(.exportHeader("ЭКСПОРТ"))
     entries.append(.exportChat("Экспорт чата в .txt"))
     entries.append(.exportFooter("Выбери чат — сохраню его историю в .txt и отправлю файл в Избранное."))
+
+    entries.append(.searchHeader("ПОИСК"))
+    entries.append(.searchToggle("Поиск подарков", settings.giftSearchTab))
+    entries.append(.searchFooter("Откройте вкладку «Подарки» в глобальном поиске и введите имя коллекции"))
 
     return entries
 }
@@ -216,6 +239,13 @@ public func kwGramMessagesSettingsController(context: AccountContext) -> ViewCon
                     presentTooltipImpl(text)
                 }
             )
+        },
+        toggleGiftSearch: { value in
+            let _ = KWGramCore.updateSettingsInteractively(postbox: context.account.postbox, { settings in
+                var settings = settings
+                settings.giftSearchTab = value
+                return settings
+            }).start()
         }
     )
 

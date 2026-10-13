@@ -1,5 +1,5 @@
 diff --git a/Telegram/BUILD b/Telegram/BUILD
-index 9ad13cf33..3814f5b20 100644
+index 9ad13cf3..3814f5b2 100644
 --- a/Telegram/BUILD
 +++ b/Telegram/BUILD
 @@ -317,18 +317,15 @@ filegroup(
@@ -16386,7 +16386,7 @@ HcmV?d00001
 
 diff --git a/Telegram/Telegram-iOS/Telegram.icon/Assets/Oval.svg b/Telegram/Telegram-iOS/Telegram.icon/Assets/Oval.svg
 deleted file mode 100644
-index c3e47858d..000000000
+index c3e47858..00000000
 --- a/Telegram/Telegram-iOS/Telegram.icon/Assets/Oval.svg
 +++ /dev/null
 @@ -1,7 +0,0 @@
@@ -16400,7 +16400,7 @@ index c3e47858d..000000000
 \ No newline at end of file
 diff --git a/Telegram/Telegram-iOS/Telegram.icon/Assets/Plane.svg b/Telegram/Telegram-iOS/Telegram.icon/Assets/Plane.svg
 deleted file mode 100644
-index e475bcfde..000000000
+index e475bcfd..00000000
 --- a/Telegram/Telegram-iOS/Telegram.icon/Assets/Plane.svg
 +++ /dev/null
 @@ -1,7 +0,0 @@
@@ -16413,7 +16413,7 @@ index e475bcfde..000000000
 -</svg>
 \ No newline at end of file
 diff --git a/Telegram/Telegram-iOS/Telegram.icon/icon.json b/Telegram/Telegram-iOS/Telegram.icon/icon.json
-index b1143f634..2f664fc8d 100644
+index b1143f63..2f664fc8 100644
 --- a/Telegram/Telegram-iOS/Telegram.icon/icon.json
 +++ b/Telegram/Telegram-iOS/Telegram.icon/icon.json
 @@ -1,122 +1,42 @@
@@ -16566,7 +16566,7 @@ index b1143f634..2f664fc8d 100644
 \ No newline at end of file
 +}
 diff --git a/submodules/AccountContext/BUILD b/submodules/AccountContext/BUILD
-index acd19b9ff..7719675c1 100644
+index acd19b9f..7719675c 100644
 --- a/submodules/AccountContext/BUILD
 +++ b/submodules/AccountContext/BUILD
 @@ -27,6 +27,7 @@ swift_library(
@@ -16578,7 +16578,7 @@ index acd19b9ff..7719675c1 100644
      visibility = [
          "//visibility:public",
 diff --git a/submodules/AccountContext/Sources/AccountContext.swift b/submodules/AccountContext/Sources/AccountContext.swift
-index fcd859bfc..f1b0c876a 100644
+index fcd859bf..80bbbdf1 100644
 --- a/submodules/AccountContext/Sources/AccountContext.swift
 +++ b/submodules/AccountContext/Sources/AccountContext.swift
 @@ -5,6 +5,7 @@ import TelegramCore
@@ -16669,7 +16669,24 @@ index fcd859bfc..f1b0c876a 100644
          )
      }
  }
-@@ -1518,7 +1562,7 @@ public protocol SharedAccountContext: AnyObject {
+@@ -851,6 +895,7 @@ public enum ChatListSearchFilter: Equatable {
+     case peer(EnginePeer.Id, Bool, String, String)
+     case date(Int32?, Int32, String)
+     case publicPosts
++    case gifts
+     
+     public var id: Int64 {
+         switch self {
+@@ -880,6 +925,8 @@ public enum ChatListSearchFilter: Equatable {
+             return 11
+         case .publicPosts:
+             return 12
++        case .gifts:
++            return 13
+         case let .peer(peerId, _, _, _):
+             return peerId.id._internalGetInt64Value()
+         case let .date(_, date, _):
+@@ -1518,7 +1565,7 @@ public protocol SharedAccountContext: AnyObject {
      func makeStarsGiftController(context: AccountContext, birthdays: [EnginePeer.Id: TelegramBirthday]?, completion: @escaping (([EnginePeer.Id]) -> Void)) -> ViewController
      func makePremiumGiftController(context: AccountContext, source: PremiumGiftSource, completion: (([EnginePeer.Id]) -> Signal<Never, TransferStarGiftError>)?) -> ViewController
      func makeGiftOptionsController(context: AccountContext, peerId: EnginePeer.Id, premiumOptions: [CachedPremiumGiftOption], hasBirthday: Bool, completion: (() -> Void)?) -> ViewController
@@ -16817,7 +16834,7 @@ index caf06427..07f50374 100644
      } else {
          var index = colorIndex % AvatarNode.gradientColors.count
 diff --git a/submodules/CallListUI/BUILD b/submodules/CallListUI/BUILD
-index 21a966fc5..0d4b7dc04 100644
+index 21a966fc..0d4b7dc0 100644
 --- a/submodules/CallListUI/BUILD
 +++ b/submodules/CallListUI/BUILD
 @@ -37,6 +37,7 @@ swift_library(
@@ -16829,7 +16846,7 @@ index 21a966fc5..0d4b7dc04 100644
      visibility = [
          "//visibility:public",
 diff --git a/submodules/CallListUI/Sources/CallListCallItem.swift b/submodules/CallListUI/Sources/CallListCallItem.swift
-index 9202c2581..b3404fcef 100644
+index 9202c258..b3404fce 100644
 --- a/submodules/CallListUI/Sources/CallListCallItem.swift
 +++ b/submodules/CallListUI/Sources/CallListCallItem.swift
 @@ -12,6 +12,7 @@ import TelegramStringFormatting
@@ -16861,8 +16878,309 @@ index 9202c2581..b3404fcef 100644
              if let peer = item.topMessage.peers[item.topMessage.id.peerId] {
                  if conferenceAvatars.count > 1 {
                      var peersString = ""
+diff --git a/submodules/ChatListUI/BUILD b/submodules/ChatListUI/BUILD
+index 1eececec..cf10ff47 100644
+--- a/submodules/ChatListUI/BUILD
++++ b/submodules/ChatListUI/BUILD
+@@ -132,6 +132,7 @@ swift_library(
+         "//submodules/TelegramUI/Components/AvatarComponent",
+         "//submodules/TelegramUI/Components/PeerManagement/OwnershipTransferController",
+         "//submodules/TelegramUI/Components/GlassControls",
++        "//submodules/TelegramUI/Components/KWGram/KWGramGiftSearch",
+     ],
+     visibility = [
+         "//visibility:public",
+diff --git a/submodules/ChatListUI/Sources/ChatListSearchContainerNode.swift b/submodules/ChatListUI/Sources/ChatListSearchContainerNode.swift
+index d0324f38..756576b3 100644
+--- a/submodules/ChatListUI/Sources/ChatListSearchContainerNode.swift
++++ b/submodules/ChatListUI/Sources/ChatListSearchContainerNode.swift
+@@ -406,6 +406,8 @@ public final class ChatListSearchContainerNode: SearchDisplayControllerContentNo
+                 key = .instantVideo
+             case .publicPosts:
+                 key = .publicPosts
++            case .gifts:
++                key = .gifts
+             case let .date(minDate, maxDate, title):
+                 date = (minDate, maxDate, title)
+             case let .peer(id, isGroup, _, compactDisplayTitle):
+@@ -433,7 +435,7 @@ public final class ChatListSearchContainerNode: SearchDisplayControllerContentNo
+                 switch filter {
+                 case let .filter(filter):
+                     switch filter {
+-                    case .downloads, .channels, .apps, .globalPosts:
++                    case .downloads, .channels, .apps, .globalPosts, .gifts:
+                         return false
+                     default:
+                         return true
+@@ -751,6 +753,8 @@ public final class ChatListSearchContainerNode: SearchDisplayControllerContentNo
+             filterKey = .instantVideo
+         case .publicPosts:
+             filterKey = .publicPosts
++        case .gifts:
++            filterKey = .gifts
+         }
+         self.selectedFilter = .filter(filterKey)
+         self.selectedFilterPromise.set(.single(self.selectedFilter))
+@@ -782,6 +786,8 @@ public final class ChatListSearchContainerNode: SearchDisplayControllerContentNo
+             key = .instantVideo
+         case .downloads:
+             key = .downloads
++        case .gifts:
++            key = .gifts
+         default:
+             key = .chats
+         }
+diff --git a/submodules/ChatListUI/Sources/ChatListSearchListPaneNode.swift b/submodules/ChatListUI/Sources/ChatListSearchListPaneNode.swift
+index 5d5e585f..8657de2d 100644
+--- a/submodules/ChatListUI/Sources/ChatListSearchListPaneNode.swift
++++ b/submodules/ChatListUI/Sources/ChatListSearchListPaneNode.swift
+@@ -39,6 +39,7 @@ import ButtonComponent
+ import BundleIconComponent
+ import AnimatedTextComponent
+ import TextFormat
++import KWGramGiftSearch
+ 
+ private func isIncludedCommunityContainer(_ peer: EnginePeer?, filter: ChatListNodePeersFilter) -> Bool {
+     if filter.contains(.includeCommunities), case .community = peer {
+@@ -404,6 +405,7 @@ public enum ChatListSearchEntryStableId: Hashable {
+     case messagePlaceholder(Int32)
+     case emptyMessagesFooter
+     case addContact
++    case kwGiftSearch(String)
+ }
+ 
+ public enum ChatListSearchSectionExpandType {
+@@ -468,6 +470,10 @@ public enum ChatListSearchEntry: Comparable, Identifiable {
+     case messagePlaceholder(Int32, ChatListPresentationData, TelegramSearchPeersScope)
+     case emptyMessagesFooter(ChatListPresentationData, TelegramSearchPeersScope, String?)
+     case addContact(String, PresentationTheme, PresentationStrings)
++    // KW Gram: one row of the «Подарки» search tab — a catalog/collection gift, a collection
++    // to dive into, or the row that goes back from a collection. The tap closure is carried
++    // by the entry because `item()` has no navigation/context to build one itself.
++    case kwGiftSearch(order: Int32, id: String, title: String, label: String, disclosure: Bool, onTap: () -> Void)
+ 
+     public var stableId: ChatListSearchEntryStableId {
+         switch self {
+@@ -489,6 +495,8 @@ public enum ChatListSearchEntry: Comparable, Identifiable {
+             return .emptyMessagesFooter
+         case .addContact:
+             return .addContact
++        case let .kwGiftSearch(_, id, _, _, _, _):
++            return .kwGiftSearch(id)
+         }
+     }
+ 
+@@ -626,6 +634,12 @@ public enum ChatListSearchEntry: Comparable, Identifiable {
+             } else {
+                 return false
+             }
++        case let .kwGiftSearch(lhsOrder, lhsId, lhsTitle, lhsLabel, lhsDisclosure, _):
++            if case let .kwGiftSearch(rhsOrder, rhsId, rhsTitle, rhsLabel, rhsDisclosure, _) = rhs {
++                return lhsOrder == rhsOrder && lhsId == rhsId && lhsTitle == rhsTitle && lhsLabel == rhsLabel && lhsDisclosure == rhsDisclosure
++            } else {
++                return false
++            }
+         }
+     }
+ 
+@@ -651,7 +665,7 @@ public enum ChatListSearchEntry: Comparable, Identifiable {
+                 return false
+             case let .localPeer(_, _, _, rhsIndex, _, _, _, _, _, _, _, _):
+                 return lhsIndex <= rhsIndex
+-            case .adPeer, .globalPeer, .message, .messagePlaceholder, .emptyMessagesFooter, .addContact:
++            case .adPeer, .globalPeer, .message, .messagePlaceholder, .emptyMessagesFooter, .addContact, .kwGiftSearch:
+                 return true
+             }
+         case let .adPeer(_, lhsIndex, _, _, _, _, _, _):
+@@ -660,7 +674,7 @@ public enum ChatListSearchEntry: Comparable, Identifiable {
+                 return false
+             case let .adPeer(_, rhsIndex, _, _, _, _, _, _):
+                 return lhsIndex <= rhsIndex
+-            case .globalPeer, .message, .messagePlaceholder, .emptyMessagesFooter, .addContact:
++            case .globalPeer, .message, .messagePlaceholder, .emptyMessagesFooter, .addContact, .kwGiftSearch:
+                 return true
+             }
+         case let .globalPeer(_, _, lhsIndex, _, _, _, _, _, _, _, _):
+@@ -669,7 +683,7 @@ public enum ChatListSearchEntry: Comparable, Identifiable {
+                 return false
+             case let .globalPeer(_, _, rhsIndex, _, _, _, _, _, _, _, _):
+                 return lhsIndex <= rhsIndex
+-            case .message, .messagePlaceholder, .emptyMessagesFooter, .addContact:
++            case .message, .messagePlaceholder, .emptyMessagesFooter, .addContact, .kwGiftSearch:
+                 return true
+             }
+         case let .message(_, _, _, _, _, _, _, _, lhsKey, _, _, _, _, _, _):
+@@ -681,6 +695,8 @@ public enum ChatListSearchEntry: Comparable, Identifiable {
+                 return true
+             } else if case .addContact = rhs {
+                 return true
++            } else if case .kwGiftSearch = rhs {
++                return true
+             } else {
+                 return false
+             }
+@@ -691,17 +707,31 @@ public enum ChatListSearchEntry: Comparable, Identifiable {
+                 return true
+             } else if case .addContact = rhs {
+                 return true
++            } else if case .kwGiftSearch = rhs {
++                return true
+             } else {
+                 return false
+             }
+         case .emptyMessagesFooter:
+             if case .addContact = rhs {
+                 return true
++            } else if case .kwGiftSearch = rhs {
++                return true
+             } else {
+                 return false
+             }
+         case .addContact:
+-            return false
++            if case .kwGiftSearch = rhs {
++                return true
++            } else {
++                return false
++            }
++        case let .kwGiftSearch(lhsOrder, _, _, _, _, _):
++            if case let .kwGiftSearch(rhsOrder, _, _, _, _, _) = rhs {
++                return lhsOrder < rhsOrder
++            } else {
++                return false
++            }
+         }
+     }
+ 
+@@ -1297,6 +1327,11 @@ public enum ChatListSearchEntry: Comparable, Identifiable {
+                 return ContactsAddItem(context: context, theme: theme, strings: strings, phoneNumber: phoneNumber, header: ChatListSearchItemHeader(type: .phoneNumber, theme: theme, strings: strings, actionTitle: nil, action: nil), action: {
+                     interaction.addContact(phoneNumber)
+                 })
++            case let .kwGiftSearch(_, _, title, label, disclosure, onTap):
++                // KW Gram: «Подарки» tab rows — flat plain rows matching the search list.
++                return ItemListDisclosureItem(presentationData: ItemListPresentationData(presentationData), title: title, label: label, sectionId: 0, style: .plain, disclosureStyle: disclosure ? .arrow : .none, action: {
++                    onTap()
++                })
+         }
+     }
+ }
+@@ -1818,6 +1853,8 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
+             tagMask = .voiceOrInstantVideo
+         case .instantVideo:
+             tagMask = .roundVideo
++        case .gifts:
++            tagMask = nil
+         }
+         self.tagMask = tagMask
+ 
+@@ -2128,6 +2165,11 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
+ 
+         let communityId = self.communityId
+ 
++        // KW Gram: the «Подарки» tab's selected collection — `nil` at the top level; tapping
++        // a collection row sets it, the back row clears it. A local (not a stored property)
++        // so the row action closures capture only the promise, never the pane itself.
++        let kwGiftSelectedCollection = Promise<Int32?>(nil)
++
+         let foundItems: Signal<([ChatListSearchEntry], Bool, String?)?, NoError> = combineLatest(queue: .mainQueue(), searchQuery, self.approvedGlobalPostQueryState.get(), searchOptions, self.searchScopePromise.get(), downloadItems, globalPostSearchStateType, isPremium)
+         |> debounceOnMainThread
+         |> mapToSignal { [weak self] query, approvedGlobalPostQueryState, options, searchScope, downloadItems, _, _ -> Signal<([ChatListSearchEntry], Bool, String?)?, NoError> in
+@@ -2229,6 +2271,43 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
+                 }
+             }
+ 
++            // KW Gram: the «Подарки» tab — the account's own collections plus the gift
++            // catalog at the top level; inside a collection, its gifts with a back row.
++            // The nested subscription re-runs the rows whenever the selected collection
++            // changes (tapping a collection row or the back row).
++            if key == .gifts {
++                return kwGiftSelectedCollection.get()
++                |> mapToSignal { selectedCollectionId -> Signal<([ChatListSearchEntry], Bool, String?)?, NoError> in
++                    KWGramGiftSearch.rows(context: context, query: query ?? "", selectedCollectionId: selectedCollectionId)
++                    |> map { rows -> ([ChatListSearchEntry], Bool, String?)? in
++                        var entries: [ChatListSearchEntry] = []
++                        var order: Int32 = 0
++                        for row in rows {
++                            var disclosure = true
++                            let onTap: () -> Void
++                            switch row.kind {
++                            case let .gift(gift):
++                                onTap = {
++                                    KWGramGiftSearchBridge.presentGift(context: context, gift: gift, navigationController: navigationController)
++                                }
++                            case let .collection(collectionId):
++                                onTap = {
++                                    kwGiftSelectedCollection.set(.single(collectionId))
++                                }
++                            case .back:
++                                disclosure = false
++                                onTap = {
++                                    kwGiftSelectedCollection.set(.single(nil))
++                                }
++                            }
++                            entries.append(.kwGiftSearch(order: order, id: row.id, title: row.title, label: row.label, disclosure: disclosure, onTap: onTap))
++                            order += 1
++                        }
++                        return (entries, false, query)
++                    }
++                }
++            }
++
+             let accountPeer = context.engine.data.get(TelegramEngine.EngineData.Item.Peer.Peer(id: context.account.peerId))
+             |> mapToSignal { peer -> Signal<EnginePeer, NoError> in
+                 if let peer {
+@@ -5963,7 +6042,7 @@ public final class ChatListSearchShimmerNode: ASDisplayNode {
+ 
+             let items = (0 ..< 2).compactMap { _ -> ListViewItem? in
+                 switch key {
+-                    case .chats, .topics, .channels, .apps, .globalPosts, .downloads, .publicPosts:
++                    case .chats, .topics, .channels, .apps, .globalPosts, .downloads, .publicPosts, .gifts:
+                         let message = EngineMessage(
+                             stableId: 0,
+                             stableVersion: 0,
+diff --git a/submodules/ChatListUI/Sources/ChatListSearchPaneContainerNode.swift b/submodules/ChatListUI/Sources/ChatListSearchPaneContainerNode.swift
+index 5aedc6d5..21470199 100644
+--- a/submodules/ChatListUI/Sources/ChatListSearchPaneContainerNode.swift
++++ b/submodules/ChatListUI/Sources/ChatListSearchPaneContainerNode.swift
+@@ -10,6 +10,7 @@ import ContextUI
+ import AnimationCache
+ import MultiAnimationRenderer
+ import TelegramNotices
++import KWGramGiftSearch
+ 
+ protocol ChatListSearchPaneNode: ASDisplayNode {
+     var isReady: Signal<Bool, NoError> { get }
+@@ -64,6 +65,7 @@ public enum ChatListSearchPaneKey {
+     case music
+     case voice
+     case instantVideo
++    case gifts
+ }
+ 
+ extension ChatListSearchPaneKey {
+@@ -95,6 +97,8 @@ extension ChatListSearchPaneKey {
+             return .voice
+         case .instantVideo:
+             return .instantVideo
++        case .gifts:
++            return .gifts
+         }
+     }
+ }
+@@ -114,6 +118,11 @@ func defaultAvailableSearchPanes(isForum: Bool, hasDownloads: Bool, hasPublicPos
+     if !isForum {
+         result.append(.globalPosts)
+     }
++    // KW Gram: the «Подарки» search tab («Чаты» → «Поиск подарков»), right after the
++    // global posts chip and before the message-scope chips.
++    if KWGramGiftSearchBridge.tabEnabled {
++        result.append(.gifts)
++    }
+     result.append(contentsOf: [.media, .downloads, .links, .files, .music, .voice])
+         
+     if !hasDownloads {
 diff --git a/submodules/LiveLocationManager/BUILD b/submodules/LiveLocationManager/BUILD
-index 47b328632..ab2ccc263 100644
+index 47b32863..ab2ccc26 100644
 --- a/submodules/LiveLocationManager/BUILD
 +++ b/submodules/LiveLocationManager/BUILD
 @@ -14,6 +14,7 @@ swift_library(
@@ -16874,7 +17192,7 @@ index 47b328632..ab2ccc263 100644
      visibility = [
          "//visibility:public",
 diff --git a/submodules/LiveLocationManager/Sources/LiveLocationManager.swift b/submodules/LiveLocationManager/Sources/LiveLocationManager.swift
-index 4187f3b49..a3e5f18d4 100644
+index 4187f3b4..a3e5f18d 100644
 --- a/submodules/LiveLocationManager/Sources/LiveLocationManager.swift
 +++ b/submodules/LiveLocationManager/Sources/LiveLocationManager.swift
 @@ -4,12 +4,20 @@ import SwiftSignalKit
@@ -16934,7 +17252,7 @@ index 4187f3b49..a3e5f18d4 100644
          let remainingIds = Atomic<Set<EngineMessage.Id>>(value: Set(ids.keys))
          for id in ids.keys {
 diff --git a/submodules/LocationUI/BUILD b/submodules/LocationUI/BUILD
-index 39d33fd6d..43d7b99f0 100644
+index 39d33fd6..43d7b99f 100644
 --- a/submodules/LocationUI/BUILD
 +++ b/submodules/LocationUI/BUILD
 @@ -61,6 +61,7 @@ swift_library(
@@ -16946,7 +17264,7 @@ index 39d33fd6d..43d7b99f0 100644
      visibility = [
          "//visibility:public",
 diff --git a/submodules/LocationUI/Sources/LocationPickerController.swift b/submodules/LocationUI/Sources/LocationPickerController.swift
-index 52ccf8478..fc1d2148f 100644
+index 52ccf847..fc1d2148 100644
 --- a/submodules/LocationUI/Sources/LocationPickerController.swift
 +++ b/submodules/LocationUI/Sources/LocationPickerController.swift
 @@ -12,6 +12,7 @@ import PresentationDataUtils
@@ -17039,7 +17357,7 @@ index 52ccf8478..fc1d2148f 100644
                  )
                  strongSelf.presentInGlobalOverlay(controller)
 diff --git a/submodules/TelegramCore/BUILD b/submodules/TelegramCore/BUILD
-index 53c9a721c..25373d441 100644
+index 53c9a721..25373d44 100644
 --- a/submodules/TelegramCore/BUILD
 +++ b/submodules/TelegramCore/BUILD
 @@ -25,7 +25,8 @@ swift_library(
@@ -17053,7 +17371,7 @@ index 53c9a721c..25373d441 100644
      visibility = [
          "//visibility:public",
 diff --git a/submodules/TelegramCore/Sources/Account/AccountManager.swift b/submodules/TelegramCore/Sources/Account/AccountManager.swift
-index 3f2b4794d..4d0bf1848 100644
+index 3f2b4794..4d0bf184 100644
 --- a/submodules/TelegramCore/Sources/Account/AccountManager.swift
 +++ b/submodules/TelegramCore/Sources/Account/AccountManager.swift
 @@ -3,6 +3,7 @@ import Postbox
@@ -17075,7 +17393,7 @@ index 3f2b4794d..4d0bf1848 100644
      declareEncodable(HttpReferenceMediaResource.self, f: { HttpReferenceMediaResource(decoder: $0) })
 diff --git a/submodules/TelegramCore/Sources/KWGram/KWGramDeletedMessageCapture.swift b/submodules/TelegramCore/Sources/KWGram/KWGramDeletedMessageCapture.swift
 new file mode 100644
-index 000000000..a57d48eff
+index 00000000..a57d48ef
 --- /dev/null
 +++ b/submodules/TelegramCore/Sources/KWGram/KWGramDeletedMessageCapture.swift
 @@ -0,0 +1,124 @@
@@ -17204,7 +17522,7 @@ index 000000000..a57d48eff
 +    }
 +}
 diff --git a/submodules/TelegramCore/Sources/Network/FetchV2.swift b/submodules/TelegramCore/Sources/Network/FetchV2.swift
-index 1075a48eb..a34917cd3 100644
+index 1075a48e..a34917cd 100644
 --- a/submodules/TelegramCore/Sources/Network/FetchV2.swift
 +++ b/submodules/TelegramCore/Sources/Network/FetchV2.swift
 @@ -4,6 +4,7 @@ import SwiftSignalKit
@@ -17386,7 +17704,7 @@ index 1075a48eb..a34917cd3 100644
      }
  }
 diff --git a/submodules/TelegramCore/Sources/Network/MultipartUpload.swift b/submodules/TelegramCore/Sources/Network/MultipartUpload.swift
-index b761375c1..f25177cab 100644
+index b761375c..f25177ca 100644
 --- a/submodules/TelegramCore/Sources/Network/MultipartUpload.swift
 +++ b/submodules/TelegramCore/Sources/Network/MultipartUpload.swift
 @@ -5,6 +5,7 @@ import SwiftSignalKit
@@ -17424,7 +17742,7 @@ index b761375c1..f25177cab 100644
              var encryptionKey: SecretFileEncryptionKey?
              if encrypt {
 diff --git a/submodules/TelegramCore/Sources/PendingMessages/EnqueueMessage.swift b/submodules/TelegramCore/Sources/PendingMessages/EnqueueMessage.swift
-index 6cf628f01..100c203d5 100644
+index 6cf628f0..100c203d 100644
 --- a/submodules/TelegramCore/Sources/PendingMessages/EnqueueMessage.swift
 +++ b/submodules/TelegramCore/Sources/PendingMessages/EnqueueMessage.swift
 @@ -3,6 +3,7 @@ import Postbox
@@ -17447,7 +17765,7 @@ index 6cf628f01..100c203d5 100644
       * If it is a support account, mark messages as read here as they are
       * not marked as read when chat is opened.
 diff --git a/submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift b/submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift
-index 58db6c716..2c433b09a 100644
+index 58db6c71..2c433b09 100644
 --- a/submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift
 +++ b/submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift
 @@ -4440,6 +4440,11 @@ func replayFinalState(
@@ -17474,7 +17792,7 @@ index 58db6c716..2c433b09a 100644
                  })
 diff --git a/submodules/TelegramCore/Sources/State/KWGramGhostHelpers.swift b/submodules/TelegramCore/Sources/State/KWGramGhostHelpers.swift
 new file mode 100644
-index 000000000..5c272a73e
+index 00000000..5c272a73
 --- /dev/null
 +++ b/submodules/TelegramCore/Sources/State/KWGramGhostHelpers.swift
 @@ -0,0 +1,89 @@
@@ -17568,7 +17886,7 @@ index 000000000..5c272a73e
 +    return true
 +}
 diff --git a/submodules/TelegramCore/Sources/State/ManagedLocalInputActivities.swift b/submodules/TelegramCore/Sources/State/ManagedLocalInputActivities.swift
-index 7acc37a1e..d1bcca586 100644
+index 7acc37a1..d1bcca58 100644
 --- a/submodules/TelegramCore/Sources/State/ManagedLocalInputActivities.swift
 +++ b/submodules/TelegramCore/Sources/State/ManagedLocalInputActivities.swift
 @@ -3,6 +3,7 @@ import Postbox
@@ -17597,7 +17915,7 @@ index 7acc37a1e..d1bcca586 100644
              if peerId == accountPeerId {
                  return .complete()
 diff --git a/submodules/TelegramCore/Sources/State/ManagedSynchronizeViewStoriesOperations.swift b/submodules/TelegramCore/Sources/State/ManagedSynchronizeViewStoriesOperations.swift
-index bebd6915a..c77dfcb02 100644
+index bebd6915..c77dfcb0 100644
 --- a/submodules/TelegramCore/Sources/State/ManagedSynchronizeViewStoriesOperations.swift
 +++ b/submodules/TelegramCore/Sources/State/ManagedSynchronizeViewStoriesOperations.swift
 @@ -3,6 +3,7 @@ import Postbox
@@ -17625,7 +17943,7 @@ index bebd6915a..c77dfcb02 100644
                              } else {
                                  return .complete()
 diff --git a/submodules/TelegramCore/Sources/State/SynchronizePeerReadState.swift b/submodules/TelegramCore/Sources/State/SynchronizePeerReadState.swift
-index 66242579e..7ac97ca5e 100644
+index 66242579..7ac97ca5 100644
 --- a/submodules/TelegramCore/Sources/State/SynchronizePeerReadState.swift
 +++ b/submodules/TelegramCore/Sources/State/SynchronizePeerReadState.swift
 @@ -2,6 +2,7 @@ import Foundation
@@ -17668,7 +17986,7 @@ index 66242579e..7ac97ca5e 100644
          return inputSecretChat(postbox: postbox, peerId: peerId)
          |> mapToSignal { inputPeer -> Signal<PeerReadState, PeerReadStateValidationError> in
 diff --git a/submodules/TelegramCore/Sources/TelegramEngine/Peers/TogglePeerChatPinned.swift b/submodules/TelegramCore/Sources/TelegramEngine/Peers/TogglePeerChatPinned.swift
-index aa11e5220..cdd240f35 100644
+index aa11e522..cdd240f3 100644
 --- a/submodules/TelegramCore/Sources/TelegramEngine/Peers/TogglePeerChatPinned.swift
 +++ b/submodules/TelegramCore/Sources/TelegramEngine/Peers/TogglePeerChatPinned.swift
 @@ -1,6 +1,7 @@
@@ -17717,19 +18035,20 @@ index aa11e5220..cdd240f35 100644
              if count > limitCount, itemIds.firstIndex(of: itemId) == nil {
                  return .limitExceeded(count: sameKind.count, limit: limitCount)
 diff --git a/submodules/TelegramUI/BUILD b/submodules/TelegramUI/BUILD
-index 2eeed6212..a727e41e0 100644
+index 2eeed621..75f0f771 100644
 --- a/submodules/TelegramUI/BUILD
 +++ b/submodules/TelegramUI/BUILD
-@@ -188,6 +188,7 @@ swift_library(
+@@ -188,6 +188,8 @@ swift_library(
          "//submodules/RaiseToListen:RaiseToListen",
          "//submodules/OpusBinding:OpusBinding",
          "//third-party/opus:opus",
 +        "//submodules/TelegramUI/Components/KWGram/KWGramCore",
++        "//submodules/TelegramUI/Components/KWGram/KWGramGiftSearch",
          "//submodules/ShareItems:ShareItems",
          "//submodules/ShareItems/Impl:ShareItemsImpl",
          "//submodules/SettingsUI:SettingsUI",
 diff --git a/submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode/BUILD b/submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode/BUILD
-index 1ddd9b862..8e7c3cab7 100644
+index 1ddd9b86..8e7c3cab 100644
 --- a/submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode/BUILD
 +++ b/submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode/BUILD
 @@ -98,6 +98,7 @@ swift_library(
@@ -17741,7 +18060,7 @@ index 1ddd9b862..8e7c3cab7 100644
      visibility = [
          "//visibility:public",
 diff --git a/submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode/Sources/ChatMessageBubbleItemNode.swift b/submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode/Sources/ChatMessageBubbleItemNode.swift
-index bb13201c9..6157595e9 100644
+index bb13201c..6157595e 100644
 --- a/submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode/Sources/ChatMessageBubbleItemNode.swift
 +++ b/submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode/Sources/ChatMessageBubbleItemNode.swift
 @@ -8,6 +8,7 @@ import TelegramCore
@@ -17855,8 +18174,23 @@ index bb13201c9..6157595e9 100644
          if let (suggestedPostInfoSize, suggestedPostInfoApply) = suggestedPostInfoNodeLayout {
              let suggestedPostInfoNode = suggestedPostInfoApply()
              if suggestedPostInfoNode !== strongSelf.suggestedPostInfoNode {
+diff --git a/submodules/TelegramUI/Components/ChatList/ChatListSearchFiltersContainerNode/Sources/ItemNode.swift b/submodules/TelegramUI/Components/ChatList/ChatListSearchFiltersContainerNode/Sources/ItemNode.swift
+index d5d2eaab..eb65c824 100644
+--- a/submodules/TelegramUI/Components/ChatList/ChatListSearchFiltersContainerNode/Sources/ItemNode.swift
++++ b/submodules/TelegramUI/Components/ChatList/ChatListSearchFiltersContainerNode/Sources/ItemNode.swift
+@@ -114,6 +114,10 @@ final class ItemNode: ASDisplayNode {
+         case .publicPosts:
+             title = presentationData.strings.ChatList_Search_FilterPublicPosts
+             icon = nil
++        case .gifts:
++            // KW Gram: «Поиск подарков» — hardcoded RU, same style as the KW strings elsewhere.
++            title = "Подарки"
++            icon = nil
+         case let .peer(peerId, isGroup, displayTitle, _):
+             title = displayTitle
+             let image: UIImage?
 diff --git a/submodules/TelegramUI/Components/Gifts/GiftOptionsScreen/BUILD b/submodules/TelegramUI/Components/Gifts/GiftOptionsScreen/BUILD
-index 1820be66b..55f1de572 100644
+index 1820be66..55f1de57 100644
 --- a/submodules/TelegramUI/Components/Gifts/GiftOptionsScreen/BUILD
 +++ b/submodules/TelegramUI/Components/Gifts/GiftOptionsScreen/BUILD
 @@ -48,6 +48,7 @@ swift_library(
@@ -17868,7 +18202,7 @@ index 1820be66b..55f1de572 100644
      visibility = [
          "//visibility:public",
 diff --git a/submodules/TelegramUI/Components/Gifts/GiftOptionsScreen/Sources/GiftOptionsScreen.swift b/submodules/TelegramUI/Components/Gifts/GiftOptionsScreen/Sources/GiftOptionsScreen.swift
-index 429cf39c8..f1c0ea5b9 100644
+index 429cf39c..f1c0ea5b 100644
 --- a/submodules/TelegramUI/Components/Gifts/GiftOptionsScreen/Sources/GiftOptionsScreen.swift
 +++ b/submodules/TelegramUI/Components/Gifts/GiftOptionsScreen/Sources/GiftOptionsScreen.swift
 @@ -28,6 +28,7 @@ import GiftViewScreen
@@ -18081,7 +18415,7 @@ index 429cf39c8..f1c0ea5b9 100644
                      transition: transition,
                      component: AnyComponent(TabSelectorComponent(
 diff --git a/submodules/TelegramUI/Components/Gifts/GiftSetupScreen/BUILD b/submodules/TelegramUI/Components/Gifts/GiftSetupScreen/BUILD
-index 7e874b3f9..4f663adaf 100644
+index 7e874b3f..4f663ada 100644
 --- a/submodules/TelegramUI/Components/Gifts/GiftSetupScreen/BUILD
 +++ b/submodules/TelegramUI/Components/Gifts/GiftSetupScreen/BUILD
 @@ -52,6 +52,8 @@ swift_library(
@@ -18094,7 +18428,7 @@ index 7e874b3f9..4f663adaf 100644
      visibility = [
          "//visibility:public",
 diff --git a/submodules/TelegramUI/Components/Gifts/GiftSetupScreen/Sources/GiftSetupScreen.swift b/submodules/TelegramUI/Components/Gifts/GiftSetupScreen/Sources/GiftSetupScreen.swift
-index 0db09aed4..8e025073d 100644
+index 0db09aed..8e025073 100644
 --- a/submodules/TelegramUI/Components/Gifts/GiftSetupScreen/Sources/GiftSetupScreen.swift
 +++ b/submodules/TelegramUI/Components/Gifts/GiftSetupScreen/Sources/GiftSetupScreen.swift
 @@ -39,6 +39,8 @@ import GlassBarButtonComponent
@@ -18305,7 +18639,7 @@ index 0db09aed4..8e025073d 100644
          ), navigationBarAppearance: .none, theme: .default)
          
 diff --git a/submodules/TelegramUI/Components/Gifts/GiftStoreScreen/BUILD b/submodules/TelegramUI/Components/Gifts/GiftStoreScreen/BUILD
-index 9eedd1221..d2263f490 100644
+index 9eedd122..d2263f49 100644
 --- a/submodules/TelegramUI/Components/Gifts/GiftStoreScreen/BUILD
 +++ b/submodules/TelegramUI/Components/Gifts/GiftStoreScreen/BUILD
 @@ -50,6 +50,7 @@ swift_library(
@@ -18317,7 +18651,7 @@ index 9eedd1221..d2263f490 100644
      visibility = [
          "//visibility:public",
 diff --git a/submodules/TelegramUI/Components/Gifts/GiftStoreScreen/Sources/BalanceComponent.swift b/submodules/TelegramUI/Components/Gifts/GiftStoreScreen/Sources/BalanceComponent.swift
-index c8ac35278..935c0597b 100644
+index c8ac3527..935c0597 100644
 --- a/submodules/TelegramUI/Components/Gifts/GiftStoreScreen/Sources/BalanceComponent.swift
 +++ b/submodules/TelegramUI/Components/Gifts/GiftStoreScreen/Sources/BalanceComponent.swift
 @@ -11,6 +11,7 @@ import MultilineTextWithEntitiesComponent
@@ -18387,7 +18721,7 @@ index c8ac35278..935c0597b 100644
              } else {
                  rawString = presentationData.strings.Stars_Purchase_Balance + "\n" + starsBalanceString
 diff --git a/submodules/TelegramUI/Components/Gifts/GiftStoreScreen/Sources/GiftStoreScreen.swift b/submodules/TelegramUI/Components/Gifts/GiftStoreScreen/Sources/GiftStoreScreen.swift
-index 79e9e7484..f86d8fbbc 100644
+index 79e9e748..f86d8fbb 100644
 --- a/submodules/TelegramUI/Components/Gifts/GiftStoreScreen/Sources/GiftStoreScreen.swift
 +++ b/submodules/TelegramUI/Components/Gifts/GiftStoreScreen/Sources/GiftStoreScreen.swift
 @@ -8,6 +8,7 @@ import TelegramPresentationData
@@ -18502,7 +18836,7 @@ index 79e9e7484..f86d8fbbc 100644
          
          self.navigationItem.backBarButtonItem = UIBarButtonItem(title: self.context.sharedContext.currentPresentationData.with { $0 }.strings.Common_Back, style: .plain, target: nil, action: nil)
 diff --git a/submodules/TelegramUI/Components/Gifts/GiftViewScreen/BUILD b/submodules/TelegramUI/Components/Gifts/GiftViewScreen/BUILD
-index 3dad3ead7..22eba5ecc 100644
+index 3dad3ead..22eba5ec 100644
 --- a/submodules/TelegramUI/Components/Gifts/GiftViewScreen/BUILD
 +++ b/submodules/TelegramUI/Components/Gifts/GiftViewScreen/BUILD
 @@ -71,6 +71,8 @@ swift_library(
@@ -18515,7 +18849,7 @@ index 3dad3ead7..22eba5ecc 100644
      visibility = [
          "//visibility:public",
 diff --git a/submodules/TelegramUI/Components/Gifts/GiftViewScreen/Sources/GiftAuctionViewScreen.swift b/submodules/TelegramUI/Components/Gifts/GiftViewScreen/Sources/GiftAuctionViewScreen.swift
-index ac8b78420..f7f71b041 100644
+index ac8b7842..f7f71b04 100644
 --- a/submodules/TelegramUI/Components/Gifts/GiftViewScreen/Sources/GiftAuctionViewScreen.swift
 +++ b/submodules/TelegramUI/Components/Gifts/GiftViewScreen/Sources/GiftAuctionViewScreen.swift
 @@ -5,6 +5,7 @@ import AsyncDisplayKit
@@ -18552,7 +18886,7 @@ index ac8b78420..f7f71b041 100644
              controller.push(storeController)
          }
 diff --git a/submodules/TelegramUI/Components/Gifts/GiftViewScreen/Sources/GiftValueScreen.swift b/submodules/TelegramUI/Components/Gifts/GiftViewScreen/Sources/GiftValueScreen.swift
-index 9da9a6730..f3151b748 100644
+index 9da9a673..f3151b74 100644
 --- a/submodules/TelegramUI/Components/Gifts/GiftViewScreen/Sources/GiftValueScreen.swift
 +++ b/submodules/TelegramUI/Components/Gifts/GiftViewScreen/Sources/GiftValueScreen.swift
 @@ -5,6 +5,7 @@ import AsyncDisplayKit
@@ -18574,7 +18908,7 @@ index 9da9a6730..f3151b748 100644
              controller.push(storeController)
          }
 diff --git a/submodules/TelegramUI/Components/Gifts/GiftViewScreen/Sources/GiftViewBuyGift.swift b/submodules/TelegramUI/Components/Gifts/GiftViewScreen/Sources/GiftViewBuyGift.swift
-index 6f6c1f3c7..b1be2ac59 100644
+index 6f6c1f3c..b1be2ac5 100644
 --- a/submodules/TelegramUI/Components/Gifts/GiftViewScreen/Sources/GiftViewBuyGift.swift
 +++ b/submodules/TelegramUI/Components/Gifts/GiftViewScreen/Sources/GiftViewBuyGift.swift
 @@ -7,6 +7,8 @@ import AccountContext
@@ -18763,7 +19097,7 @@ index 6f6c1f3c7..b1be2ac59 100644
 +    })
  }
 diff --git a/submodules/TelegramUI/Components/Gifts/GiftViewScreen/Sources/GiftViewScreen.swift b/submodules/TelegramUI/Components/Gifts/GiftViewScreen/Sources/GiftViewScreen.swift
-index 1a5228a97..bb9fd9f98 100644
+index 1a5228a9..bb9fd9f9 100644
 --- a/submodules/TelegramUI/Components/Gifts/GiftViewScreen/Sources/GiftViewScreen.swift
 +++ b/submodules/TelegramUI/Components/Gifts/GiftViewScreen/Sources/GiftViewScreen.swift
 @@ -5,6 +5,7 @@ import AsyncDisplayKit
@@ -18810,7 +19144,7 @@ index 1a5228a97..bb9fd9f98 100644
          self.togglePinnedToTop = togglePinnedToTop
          self.shareStory = shareStory
 diff --git a/submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/BUILD b/submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/BUILD
-index 09315ffb4..719fd0030 100644
+index 09315ffb..719fd003 100644
 --- a/submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/BUILD
 +++ b/submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/BUILD
 @@ -140,6 +140,9 @@ swift_library(
@@ -18824,7 +19158,7 @@ index 09315ffb4..719fd0030 100644
          "//submodules/TelegramUI/Components/TextLoadingEffect",
          "//submodules/TelegramUI/Components/TextProcessingScreen",
 diff --git a/submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoScreen.swift b/submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoScreen.swift
-index fd01930fb..4ee32c3ad 100644
+index fd01930f..4ee32c3a 100644
 --- a/submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoScreen.swift
 +++ b/submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoScreen.swift
 @@ -113,6 +113,7 @@ import PeerMessagesMediaPlaylist
@@ -18894,7 +19228,7 @@ index fd01930fb..4ee32c3ad 100644
              contentHeight += headerHeight
              if !((self.isSettings || self.isMyProfile) && self.state.isEditing) {
 diff --git a/submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoScreenSettingsActions.swift b/submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoScreenSettingsActions.swift
-index 806e652ac..fd7fdcd8d 100644
+index 806e652a..fd7fdcd8 100644
 --- a/submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoScreenSettingsActions.swift
 +++ b/submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoScreenSettingsActions.swift
 @@ -15,6 +15,7 @@ import TelegramPresentationData
@@ -18915,7 +19249,7 @@ index 806e652ac..fd7fdcd8d 100644
              guard let controller = self.controller, !controller.presentAccountFrozenInfoIfNeeded() else {
                  return
 diff --git a/submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoSettingsItems.swift b/submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoSettingsItems.swift
-index c5f58f4bb..73f4f0315 100644
+index c5f58f4b..73f4f031 100644
 --- a/submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoSettingsItems.swift
 +++ b/submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoSettingsItems.swift
 @@ -12,12 +12,17 @@ import ItemListPeerItem
@@ -19014,7 +19348,7 @@ index c5f58f4bb..73f4f0315 100644
                  interaction.openSettings(.ton)
              }))
 diff --git a/submodules/TelegramUI/Components/PeerInfo/PeerInfoVisualMediaPaneNode/BUILD b/submodules/TelegramUI/Components/PeerInfo/PeerInfoVisualMediaPaneNode/BUILD
-index ef6fe4b4a..3754f38c9 100644
+index ef6fe4b4..3754f38c 100644
 --- a/submodules/TelegramUI/Components/PeerInfo/PeerInfoVisualMediaPaneNode/BUILD
 +++ b/submodules/TelegramUI/Components/PeerInfo/PeerInfoVisualMediaPaneNode/BUILD
 @@ -61,6 +61,7 @@ swift_library(
@@ -19026,7 +19360,7 @@ index ef6fe4b4a..3754f38c9 100644
      visibility = [
          "//visibility:public",
 diff --git a/submodules/TelegramUI/Components/PeerInfo/PeerInfoVisualMediaPaneNode/Sources/GiftsListView.swift b/submodules/TelegramUI/Components/PeerInfo/PeerInfoVisualMediaPaneNode/Sources/GiftsListView.swift
-index e1c98a1ac..e26bad857 100644
+index e1c98a1a..e26bad85 100644
 --- a/submodules/TelegramUI/Components/PeerInfo/PeerInfoVisualMediaPaneNode/Sources/GiftsListView.swift
 +++ b/submodules/TelegramUI/Components/PeerInfo/PeerInfoVisualMediaPaneNode/Sources/GiftsListView.swift
 @@ -26,6 +26,7 @@ import UndoUI
@@ -19157,7 +19491,7 @@ index e1c98a1ac..e26bad857 100644
                                      let controller = GiftViewScreen(
                                          context: self.context,
 diff --git a/submodules/TelegramUI/Components/PeerInfo/PeerInfoVisualMediaPaneNode/Sources/PeerInfoGiftsPaneNode.swift b/submodules/TelegramUI/Components/PeerInfo/PeerInfoVisualMediaPaneNode/Sources/PeerInfoGiftsPaneNode.swift
-index ee9ea2d9f..3ed0e5b86 100644
+index ee9ea2d9..3ed0e5b8 100644
 --- a/submodules/TelegramUI/Components/PeerInfo/PeerInfoVisualMediaPaneNode/Sources/PeerInfoGiftsPaneNode.swift
 +++ b/submodules/TelegramUI/Components/PeerInfo/PeerInfoVisualMediaPaneNode/Sources/PeerInfoGiftsPaneNode.swift
 @@ -36,6 +36,7 @@ import TextFormat
@@ -19287,7 +19621,7 @@ index ee9ea2d9f..3ed0e5b86 100644
                              let resultController = UndoOverlayController(
                                  presentationData: presentationData,
 diff --git a/submodules/TelegramUI/Components/Settings/CollectibleItemInfoScreen/Sources/CollectibleItemInfoScreen.swift b/submodules/TelegramUI/Components/Settings/CollectibleItemInfoScreen/Sources/CollectibleItemInfoScreen.swift
-index 57ecb9d90..3feabdd4f 100644
+index 57ecb9d9..3feabdd4 100644
 --- a/submodules/TelegramUI/Components/Settings/CollectibleItemInfoScreen/Sources/CollectibleItemInfoScreen.swift
 +++ b/submodules/TelegramUI/Components/Settings/CollectibleItemInfoScreen/Sources/CollectibleItemInfoScreen.swift
 @@ -747,7 +747,19 @@ public class CollectibleItemInfoScreen: ViewControllerComponentContainer {
@@ -19312,7 +19646,7 @@ index 57ecb9d90..3feabdd4f 100644
      }
      
 diff --git a/submodules/TelegramUI/Components/Stars/StarsBalanceOverlayComponent/BUILD b/submodules/TelegramUI/Components/Stars/StarsBalanceOverlayComponent/BUILD
-index d3e5547d2..738166109 100644
+index d3e5547d..73816610 100644
 --- a/submodules/TelegramUI/Components/Stars/StarsBalanceOverlayComponent/BUILD
 +++ b/submodules/TelegramUI/Components/Stars/StarsBalanceOverlayComponent/BUILD
 @@ -23,6 +23,7 @@ swift_library(
@@ -19324,7 +19658,7 @@ index d3e5547d2..738166109 100644
      visibility = [
          "//visibility:public",
 diff --git a/submodules/TelegramUI/Components/Stars/StarsBalanceOverlayComponent/Sources/StarsBalanceOverlayComponent.swift b/submodules/TelegramUI/Components/Stars/StarsBalanceOverlayComponent/Sources/StarsBalanceOverlayComponent.swift
-index bc8f90430..cf34777e7 100644
+index bc8f9043..cf34777e 100644
 --- a/submodules/TelegramUI/Components/Stars/StarsBalanceOverlayComponent/Sources/StarsBalanceOverlayComponent.swift
 +++ b/submodules/TelegramUI/Components/Stars/StarsBalanceOverlayComponent/Sources/StarsBalanceOverlayComponent.swift
 @@ -12,6 +12,7 @@ import MultilineTextWithEntitiesComponent
@@ -19397,7 +19731,7 @@ index bc8f90430..cf34777e7 100644
                  rawString = presentationData.strings.StarsBalance_YourBalance(balanceString).string
              } else {
 diff --git a/submodules/TelegramUI/Components/Stars/StarsPurchaseScreen/BUILD b/submodules/TelegramUI/Components/Stars/StarsPurchaseScreen/BUILD
-index b1e85960e..fe49b7519 100644
+index b1e85960..fe49b751 100644
 --- a/submodules/TelegramUI/Components/Stars/StarsPurchaseScreen/BUILD
 +++ b/submodules/TelegramUI/Components/Stars/StarsPurchaseScreen/BUILD
 @@ -21,6 +21,7 @@ swift_library(
@@ -19409,7 +19743,7 @@ index b1e85960e..fe49b7519 100644
          "//submodules/ItemListUI",
          "//submodules/TelegramStringFormatting",
 diff --git a/submodules/TelegramUI/Components/Stars/StarsPurchaseScreen/Sources/StarsPurchaseScreen.swift b/submodules/TelegramUI/Components/Stars/StarsPurchaseScreen/Sources/StarsPurchaseScreen.swift
-index 9e0f9fb37..639929905 100644
+index 9e0f9fb3..63992990 100644
 --- a/submodules/TelegramUI/Components/Stars/StarsPurchaseScreen/Sources/StarsPurchaseScreen.swift
 +++ b/submodules/TelegramUI/Components/Stars/StarsPurchaseScreen/Sources/StarsPurchaseScreen.swift
 @@ -25,16 +25,20 @@ import PremiumStarComponent
@@ -19663,7 +19997,7 @@ index 9e0f9fb37..639929905 100644
          image: UIImage(bundleImageName: "Peer Info/PremiumIcon"),
          colors: [
 diff --git a/submodules/TelegramUI/Components/Stars/StarsTransactionsScreen/BUILD b/submodules/TelegramUI/Components/Stars/StarsTransactionsScreen/BUILD
-index 066e81e6d..862231fa0 100644
+index 066e81e6..862231fa 100644
 --- a/submodules/TelegramUI/Components/Stars/StarsTransactionsScreen/BUILD
 +++ b/submodules/TelegramUI/Components/Stars/StarsTransactionsScreen/BUILD
 @@ -51,6 +51,9 @@ swift_library(
@@ -19677,7 +20011,7 @@ index 066e81e6d..862231fa0 100644
      visibility = [
          "//visibility:public",
 diff --git a/submodules/TelegramUI/Components/Stars/StarsTransactionsScreen/Sources/StarsStatisticsScreen.swift b/submodules/TelegramUI/Components/Stars/StarsTransactionsScreen/Sources/StarsStatisticsScreen.swift
-index ed818d679..efb877a85 100644
+index ed818d67..efb877a8 100644
 --- a/submodules/TelegramUI/Components/Stars/StarsTransactionsScreen/Sources/StarsStatisticsScreen.swift
 +++ b/submodules/TelegramUI/Components/Stars/StarsTransactionsScreen/Sources/StarsStatisticsScreen.swift
 @@ -699,12 +699,14 @@ final class StarsStatisticsScreenComponent: Component {
@@ -19722,7 +20056,7 @@ index ed818d679..efb877a85 100644
                              component.openTransaction(transaction)
                          }
 diff --git a/submodules/TelegramUI/Components/Stars/StarsTransactionsScreen/Sources/StarsTransactionsListPanelComponent.swift b/submodules/TelegramUI/Components/Stars/StarsTransactionsScreen/Sources/StarsTransactionsListPanelComponent.swift
-index 04768a768..ee895e0ad 100644
+index 04768a76..ee895e0a 100644
 --- a/submodules/TelegramUI/Components/Stars/StarsTransactionsScreen/Sources/StarsTransactionsListPanelComponent.swift
 +++ b/submodules/TelegramUI/Components/Stars/StarsTransactionsScreen/Sources/StarsTransactionsListPanelComponent.swift
 @@ -18,6 +18,7 @@ import PhotoResources
@@ -19859,7 +20193,7 @@ index 04768a768..ee895e0ad 100644
              self.environment = environment
              
 diff --git a/submodules/TelegramUI/Components/Stars/StarsTransactionsScreen/Sources/StarsTransactionsScreen.swift b/submodules/TelegramUI/Components/Stars/StarsTransactionsScreen/Sources/StarsTransactionsScreen.swift
-index 87c58b5f2..662a24798 100644
+index 87c58b5f..662a2479 100644
 --- a/submodules/TelegramUI/Components/Stars/StarsTransactionsScreen/Sources/StarsTransactionsScreen.swift
 +++ b/submodules/TelegramUI/Components/Stars/StarsTransactionsScreen/Sources/StarsTransactionsScreen.swift
 @@ -25,6 +25,8 @@ import ItemListUI
@@ -20137,19 +20471,21 @@ index e83aae1c..fcd27e55 100644
              self.unseenCloseFriendsColors = [theme.chatList.storyUnseenPrivateColors.topColor, theme.chatList.storyUnseenPrivateColors.bottomColor]
              self.seenColors = [theme.chatList.storySeenColors.topColor, theme.chatList.storySeenColors.bottomColor]
 diff --git a/submodules/TelegramUI/Sources/AccountContext.swift b/submodules/TelegramUI/Sources/AccountContext.swift
-index 4d971fd3..dd63a328 100644
+index 4d971fd3..6baef36e 100644
 --- a/submodules/TelegramUI/Sources/AccountContext.swift
 +++ b/submodules/TelegramUI/Sources/AccountContext.swift
-@@ -8,6 +8,8 @@ import DeviceAccess
+@@ -8,6 +8,10 @@ import DeviceAccess
  import TelegramPresentationData
  import AccountContext
  import LiveLocationManager
 +import PhantomGiftKit
 +import KWGramCore
++import KWGramGiftSearch
++import GiftViewScreen
  import TemporaryCachedPeerDataManager
  import PhoneNumberFormat
  import TelegramUIPreferences
-@@ -271,7 +273,19 @@ public final class AccountContextImpl: AccountContext {
+@@ -271,7 +275,19 @@ public final class AccountContextImpl: AccountContext {
      public private(set) var isFrozen: Bool
      
      public let imageCache: AnyObject?
@@ -20170,17 +20506,33 @@ index 4d971fd3..dd63a328 100644
      public init(sharedContext: SharedAccountContextImpl, account: Account, limitsConfiguration: LimitsConfiguration, contentSettings: ContentSettings, appConfiguration: AppConfiguration, availableReplyColors: EngineAvailableColorOptions, availableProfileColors: EngineAvailableColorOptions, temp: Bool = false)
      {
          self.sharedContextImpl = sharedContext
-@@ -295,6 +309,9 @@ public final class AccountContextImpl: AccountContext {
+@@ -295,6 +311,25 @@ public final class AccountContextImpl: AccountContext {
          }
          self.fetchManager = FetchManagerImpl(postbox: account.postbox, storeManager: self.downloadedMediaStoreManager)
          if sharedContext.applicationBindings.isMainApp && !temp {
 +            self.kwGramGiftReceiveDisposable.set(KWGramPhantomGiftManager.observeIncomingGiftTransfers(account: account))
 +            KWGramFakeAdminRuntime.shared.start(accountKey: account.peerId.toInt64(), postbox: account.postbox)
 +            KWGramMonoColorRuntime.shared.start(accountKey: account.peerId.toInt64(), postbox: account.postbox)
++            // KW Gram: «Подарки» search tab («Чаты» → «Поиск подарков») — install the push
++            // closure (ChatListUI can't reach GiftViewScreen itself) and mirror the stored
++            // switch into the tab's visibility flag.
++            KWGramGiftSearchBridge.install { context, gift, navigationController in
++                let subject: GiftViewScreen.Subject
++                switch gift {
++                case let .generic(gift):
++                    subject = .soldOutGift(gift)
++                case let .unique(gift):
++                    subject = .uniqueGift(gift, nil)
++                }
++                if let navigationController {
++                    navigationController.pushViewController(GiftViewScreen(context: context, subject: subject))
++                }
++            }
++            KWGramGiftSearchRuntime.shared.start(accountKey: account.peerId.toInt64(), postbox: account.postbox)
              self.prefetchManager = PrefetchManagerImpl(sharedContext: sharedContext, account: account, engine: self.engine, fetchManager: self.fetchManager)
              self.wallpaperUploadManager = WallpaperUploadManagerImpl(sharedContext: sharedContext, account: account, presentationData: sharedContext.presentationData)
              self.themeUpdateManager = ThemeUpdateManagerImpl(sharedContext: sharedContext, account: account)
-@@ -502,9 +519,60 @@ public final class AccountContextImpl: AccountContext {
+@@ -502,9 +537,60 @@ public final class AccountContextImpl: AccountContext {
              }
              (self.animationRenderer as? DCTMultiAnimationRendererImpl)?.useYuvA = settings.compressedEmojiCache
          })
@@ -20242,7 +20594,7 @@ index 4d971fd3..dd63a328 100644
          self.managedAppSpecificContactsDisposable?.dispose()
          self.contentSettingsDisposable?.dispose()
 diff --git a/submodules/TelegramUI/Sources/AppDelegate.swift b/submodules/TelegramUI/Sources/AppDelegate.swift
-index b1ea96b8d..f44d4ea3f 100644
+index b1ea96b8..f44d4ea3 100644
 --- a/submodules/TelegramUI/Sources/AppDelegate.swift
 +++ b/submodules/TelegramUI/Sources/AppDelegate.swift
 @@ -948,24 +948,23 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
@@ -20287,7 +20639,7 @@ index b1ea96b8d..f44d4ea3f 100644
              } else {
                  return []
 diff --git a/submodules/TelegramUI/Sources/Chat/ChatControllerMediaRecording.swift b/submodules/TelegramUI/Sources/Chat/ChatControllerMediaRecording.swift
-index 2e4d308a1..af32837d6 100644
+index 2e4d308a..af32837d 100644
 --- a/submodules/TelegramUI/Sources/Chat/ChatControllerMediaRecording.swift
 +++ b/submodules/TelegramUI/Sources/Chat/ChatControllerMediaRecording.swift
 @@ -42,6 +42,7 @@ import RaiseToListen
@@ -20425,7 +20777,7 @@ index 2e4d308a1..af32837d6 100644
                      }
                  }))
 diff --git a/submodules/TelegramUI/Sources/Chat/ChatMessageDisplaySendMessageOptions.swift b/submodules/TelegramUI/Sources/Chat/ChatMessageDisplaySendMessageOptions.swift
-index a1a8f61d0..ab9ed4399 100644
+index a1a8f61d..ab9ed439 100644
 --- a/submodules/TelegramUI/Sources/Chat/ChatMessageDisplaySendMessageOptions.swift
 +++ b/submodules/TelegramUI/Sources/Chat/ChatMessageDisplaySendMessageOptions.swift
 @@ -12,6 +12,8 @@ import TopMessageReactions
@@ -20506,7 +20858,7 @@ index a1a8f61d0..ab9ed4399 100644
          return
      }
 diff --git a/submodules/TelegramUI/Sources/ChatController.swift b/submodules/TelegramUI/Sources/ChatController.swift
-index 1ea5595d6..0f61d419a 100644
+index 1ea5595d..0f61d419 100644
 --- a/submodules/TelegramUI/Sources/ChatController.swift
 +++ b/submodules/TelegramUI/Sources/ChatController.swift
 @@ -53,6 +53,8 @@ import StatisticsUI
@@ -20545,7 +20897,7 @@ index 1ea5595d6..0f61d419a 100644
          |> deliverOnMainQueue).startStandalone(next: { [weak self] shouldDivert in
              guard let self else {
 diff --git a/submodules/TelegramUI/Sources/ChatInterfaceStateContextMenus.swift b/submodules/TelegramUI/Sources/ChatInterfaceStateContextMenus.swift
-index 4439c0932..1a09cbbb2 100644
+index 4439c093..1a09cbbb 100644
 --- a/submodules/TelegramUI/Sources/ChatInterfaceStateContextMenus.swift
 +++ b/submodules/TelegramUI/Sources/ChatInterfaceStateContextMenus.swift
 @@ -38,7 +38,9 @@ import ChatMessageItemView
@@ -20648,7 +21000,7 @@ index 4439c0932..1a09cbbb2 100644
          return .single(ContextController.Items(content: .list([])))
      }
 diff --git a/submodules/TelegramUI/Sources/ChatInterfaceStateInputPanels.swift b/submodules/TelegramUI/Sources/ChatInterfaceStateInputPanels.swift
-index d5ece8177..109a9c7d0 100644
+index d5ece817..109a9c7d 100644
 --- a/submodules/TelegramUI/Sources/ChatInterfaceStateInputPanels.swift
 +++ b/submodules/TelegramUI/Sources/ChatInterfaceStateInputPanels.swift
 @@ -11,6 +11,7 @@ import ChatControllerInteraction
@@ -20672,7 +21024,7 @@ index d5ece8177..109a9c7d0 100644
                          return (currentPanel, nil)
 diff --git a/submodules/TelegramUI/Sources/KWGram/KWGramVoiceChanger.swift b/submodules/TelegramUI/Sources/KWGram/KWGramVoiceChanger.swift
 new file mode 100644
-index 000000000..cbc8fdba8
+index 00000000..cbc8fdba
 --- /dev/null
 +++ b/submodules/TelegramUI/Sources/KWGram/KWGramVoiceChanger.swift
 @@ -0,0 +1,234 @@
@@ -20912,7 +21264,7 @@ index 000000000..cbc8fdba8
 +}
 \ No newline at end of file
 diff --git a/submodules/TelegramUI/Sources/NavigateToChatController.swift b/submodules/TelegramUI/Sources/NavigateToChatController.swift
-index 4a2555811..a7afec250 100644
+index 4a255581..a7afec25 100644
 --- a/submodules/TelegramUI/Sources/NavigateToChatController.swift
 +++ b/submodules/TelegramUI/Sources/NavigateToChatController.swift
 @@ -20,17 +20,41 @@ import SavedMessagesScreen
@@ -20996,7 +21348,7 @@ index 4a2555811..a7afec250 100644
              for controller in params.navigationController.viewControllers.reversed() {
                  var chatListController: ChatListControllerImpl?
 diff --git a/submodules/TelegramUI/Sources/SharedAccountContext.swift b/submodules/TelegramUI/Sources/SharedAccountContext.swift
-index ecfc01ea9..9f2087633 100644
+index ecfc01ea..9f208763 100644
 --- a/submodules/TelegramUI/Sources/SharedAccountContext.swift
 +++ b/submodules/TelegramUI/Sources/SharedAccountContext.swift
 @@ -10,6 +10,7 @@ import TelegramCallsUI
@@ -21019,7 +21371,7 @@ index ecfc01ea9..9f2087633 100644
      }
      
 diff --git a/submodules/TelegramUI/Sources/SharedWakeupManager.swift b/submodules/TelegramUI/Sources/SharedWakeupManager.swift
-index 97de6187f..b5faecf1d 100644
+index 97de6187..b5faecf1 100644
 --- a/submodules/TelegramUI/Sources/SharedWakeupManager.swift
 +++ b/submodules/TelegramUI/Sources/SharedWakeupManager.swift
 @@ -9,6 +9,7 @@ import AccountContext

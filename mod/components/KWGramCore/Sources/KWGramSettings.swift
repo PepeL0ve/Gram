@@ -279,6 +279,12 @@ public struct KWGramSettings: Codable, Equatable {
     /// keeps working. Stored values are preserved; the settings SCREENS read the raw value
     /// (`rawSettings`/`rawSettingsSignal`) so they still show and edit the real state.
     public var masterEnabled: Bool
+    /// «Поиск подарков» (раздел «Чаты»): shows the «Подарки» chip — a search tab for the
+    /// account's own gift collections and the gift catalog — in Telegram's global search.
+    /// Mirrored into `KWGramGiftSearchBridge.tabEnabled` by `KWGramGiftSearchRuntime`
+    /// (started from `AccountContextImpl`). Deliberately NOT part of `masterEnabled`'s
+    /// gifts-gating: it's a «Чаты» search feature, not a gift visual.
+    public var giftSearchTab: Bool
 
     public static let defaultFakeStarsBalance: Int64 = 50_000
     public static let defaultFakeTonBalanceNanos: Int64 = 0
@@ -323,11 +329,12 @@ public struct KWGramSettings: Codable, Equatable {
             legalPremiumEnabled: false,
             masterEnabled: true,
             timeInNicknameEnabled: false,
-            timeInNicknameBackupLastName: nil
+            timeInNicknameBackupLastName: nil,
+            giftSearchTab: true
         )
     }
 
-    public init(phantomGiftsEnabled: Bool, fakeStarsBalance: Int64, fakeTonBalanceNanos: Int64, fakeStarsDisplayEnabled: Bool, fakeTonDisplayEnabled: Bool, antiDeleteMessagesEnabled: Bool, ghostReaderEnabled: Bool, onlineMaskEnabled: Bool, ghostModeEnabled: Bool, ghostHideReadReceipts: Bool, ghostHideStoryViews: Bool, ghostHideOnline: Bool, ghostHideTyping: Bool, ghostAutoOffline: Bool, ghostReadOnAction: Bool, ghostExcludeAllChannels: Bool, ghostExcludeAllGroups: Bool, ghostExcludedFolderIds: [Int32], ghostExcludedPeerIds: [PeerId], antiDeleteExcludedPeerIds: [PeerId], visualEditEnabled: Bool, fromHimGiftsEnabled: Bool, voiceChangerMessagesEnabled: Bool, voicePreset: KWGramVoicePreset, uploadSpeedMode: KWGramSpeedMode, downloadSpeedMode: KWGramSpeedMode, fakeLocationEnabled: Bool, fakeLocationLatitude: Double, fakeLocationLongitude: Double, chatLockEnabled: Bool, chatLockPin: String, lockedChatPeerIds: [PeerId], localRublesBalanceKopecks: Int64, localRublesPurchaseEnabled: Bool, infinitePinsEnabled: Bool, legalPremiumEnabled: Bool, masterEnabled: Bool, timeInNicknameEnabled: Bool = false, timeInNicknameBackupLastName: String? = nil) {
+    public init(phantomGiftsEnabled: Bool, fakeStarsBalance: Int64, fakeTonBalanceNanos: Int64, fakeStarsDisplayEnabled: Bool, fakeTonDisplayEnabled: Bool, antiDeleteMessagesEnabled: Bool, ghostReaderEnabled: Bool, onlineMaskEnabled: Bool, ghostModeEnabled: Bool, ghostHideReadReceipts: Bool, ghostHideStoryViews: Bool, ghostHideOnline: Bool, ghostHideTyping: Bool, ghostAutoOffline: Bool, ghostReadOnAction: Bool, ghostExcludeAllChannels: Bool, ghostExcludeAllGroups: Bool, ghostExcludedFolderIds: [Int32], ghostExcludedPeerIds: [PeerId], antiDeleteExcludedPeerIds: [PeerId], visualEditEnabled: Bool, fromHimGiftsEnabled: Bool, voiceChangerMessagesEnabled: Bool, voicePreset: KWGramVoicePreset, uploadSpeedMode: KWGramSpeedMode, downloadSpeedMode: KWGramSpeedMode, fakeLocationEnabled: Bool, fakeLocationLatitude: Double, fakeLocationLongitude: Double, chatLockEnabled: Bool, chatLockPin: String, lockedChatPeerIds: [PeerId], localRublesBalanceKopecks: Int64, localRublesPurchaseEnabled: Bool, infinitePinsEnabled: Bool, legalPremiumEnabled: Bool, masterEnabled: Bool, timeInNicknameEnabled: Bool = false, timeInNicknameBackupLastName: String? = nil, giftSearchTab: Bool = true) {
         self.phantomGiftsEnabled = phantomGiftsEnabled
         self.fakeStarsBalance = fakeStarsBalance
         self.fakeTonBalanceNanos = fakeTonBalanceNanos
@@ -367,6 +374,7 @@ public struct KWGramSettings: Codable, Equatable {
         self.masterEnabled = masterEnabled
         self.timeInNicknameEnabled = timeInNicknameEnabled
         self.timeInNicknameBackupLastName = timeInNicknameBackupLastName
+        self.giftSearchTab = giftSearchTab
     }
 
     /// Decoded field by field with `decodeIfPresent` rather than by the synthesized
@@ -438,6 +446,7 @@ public struct KWGramSettings: Codable, Equatable {
         self.masterEnabled = try container.decodeIfPresent(Bool.self, forKey: .masterEnabled) ?? defaults.masterEnabled
         self.timeInNicknameEnabled = try container.decodeIfPresent(Bool.self, forKey: .timeInNicknameEnabled) ?? defaults.timeInNicknameEnabled
         self.timeInNicknameBackupLastName = try container.decodeIfPresent(String.self, forKey: .timeInNicknameBackupLastName)
+        self.giftSearchTab = try container.decodeIfPresent(Bool.self, forKey: .giftSearchTab) ?? defaults.giftSearchTab
     }
 
     /// A copy with just the **Подарки** section's visual features forced off (every stored value
