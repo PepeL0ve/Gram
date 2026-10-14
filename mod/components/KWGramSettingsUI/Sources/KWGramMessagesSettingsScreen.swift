@@ -185,9 +185,9 @@ private enum KWGramMessagesEntry: ItemListNodeEntry {
     func item(presentationData: ItemListPresentationData, arguments: Any) -> ListViewItem {
         let arguments = arguments as! KWGramMessagesArguments
         switch self {
-        case let .aboutText(text), let .antiDeleteFooter(text), let .visualEditFooter(text), let .historyFooter(text), let .exportFooter(text), let .searchFooter(text), let .muteFooter(text):
+        case let .aboutText(text), let .antiDeleteFooter(text), let .visualEditFooter(text), let .historyFooter(text), let .exportFooter(text), let .searchFooter(text), let .muteFooter(text), let .titleFooter(text):
             return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
-        case let .historyHeader(text), let .exportHeader(text), let .searchHeader(text), let .muteHeader(text), let .mutedHeader(text):
+        case let .historyHeader(text), let .exportHeader(text), let .searchHeader(text), let .muteHeader(text), let .mutedHeader(text), let .titleHeader(text):
             return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
         case let .antiDeleteToggle(title, value):
             return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, text: "Сообщения, удалённые собеседником, остаются видимыми у вас.", value: value, sectionId: self.section, style: .blocks, updated: { value in
@@ -241,14 +241,10 @@ private enum KWGramMessagesEntry: ItemListNodeEntry {
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: title, label: label, sectionId: self.section, style: .blocks, action: {
                 arguments.unmutePeer(peerId, title)
             })
-        case let .titleHeader(title):
-            return ItemListHeaderItem(presentationData: presentationData, systemStyle: .glass, title: title, sectionId: self.section)
         case let .titleInput(title, value):
             return ItemListSingleLineInputItem(presentationData: presentationData, systemStyle: .glass, title: NSAttributedString(string: title), text: value, placeholder: "Чаты", type: .regular(capitalization: false, autocorrection: false), maxLength: 40, sectionId: self.section, textUpdated: { updated in
                 arguments.setTitle(updated)
             }, action: {})
-        case let .titleFooter(title):
-            return ItemListTextItem(presentationData: presentationData, systemStyle: .glass, text: .markdown(title), sectionId: self.section)
         }
     }
 }
