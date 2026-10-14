@@ -17348,7 +17348,7 @@ index 1eececec..c2334325 100644
      visibility = [
          "//visibility:public",
 diff --git a/submodules/ChatListUI/Sources/ChatListController.swift b/submodules/ChatListUI/Sources/ChatListController.swift
-index eafe9575..c919e073 100644
+index eafe9575..61f832b6 100644
 --- a/submodules/ChatListUI/Sources/ChatListController.swift
 +++ b/submodules/ChatListUI/Sources/ChatListController.swift
 @@ -5,6 +5,7 @@ import SwiftSignalKit
@@ -17392,28 +17392,23 @@ index eafe9575..c919e073 100644
              backBarButtonItem.accessibilityLabel = self.presentationData.strings.Common_Back
              self.navigationItem.backBarButtonItem = backBarButtonItem
              
-@@ -957,6 +962,29 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController
+@@ -957,6 +962,24 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController
          self.requestLayout(transition: .immediate)
      }
      
-+    // KW Gram «Заголовок»: точечное обновление заголовков при смене значения в настройках.
-+    // В отличие от updateThemeAndStrings не пересчитывает тему/раскладку целиком — только
-+    // вкладку, plainTitle (back-кнопка) и текст шапки; requestLayout прогоняет
-+    // updateNavigationBar → updateHeaderContent(), который перечитывает оба значения.
-+    private func kwGramApplyCustomTitle() {
++    // KW Gram «Заголовок»: вкладка и plainTitle (back-кнопка) при смене значения в
++    // настройках. Вызывается из ChatListLocationContext — там же обновляется текст шапки;
++    // requestLayout прогоняет updateNavigationBar → updateHeaderContent(), который
++    // перечитывает оба значения.
++    func kwGramApplyCustomTabTitle(_ title: String) {
 +        guard case .chatList(.root) = self.location else {
 +            return
 +        }
-+        let title = KWGramTitleRuntime.shared.title(accountKey: self.context.account.peerId.toInt64()) ?? self.presentationData.strings.DialogList_Title
 +        guard title != self.plainTitle else {
 +            return
 +        }
 +        self.plainTitle = title
 +        self.tabBarItem.title = title
-+        if var titleContent = self.chatListTitle, !titleContent.activity {
-+            titleContent.text = title
-+            self.chatListTitle = titleContent
-+        }
 +        if self.isNodeLoaded {
 +            self.requestLayout(transition: .immediate)
 +        }
@@ -17422,17 +17417,33 @@ index eafe9575..c919e073 100644
      func tabContextGesture(id: Int32?, sourceNode: ContextExtractedContentContainingNode?, sourceView: ContextExtractedContentContainingView?, gesture: ContextGesture?, keepInPlace: Bool, isDisabled: Bool) {
          let context = self.context
          let filterPeersAreMuted: Signal<(areMuted: Bool, peerIds: [EnginePeer.Id])?, NoError> = self.context.engine.peers.currentChatListFilters()
-@@ -6777,6 +6805,9 @@ private final class ChatListLocationContext {
+@@ -6777,6 +6800,25 @@ private final class ChatListLocationContext {
      private(set) var title: String = ""
      private(set) var chatTitleComponent: ChatTitleComponent?
      private(set) var chatListTitle: NetworkStatusTitle?
 +    // KW Gram «Заголовок»: подписка на живое изменение пользовательского заголовка
 +    // главного экрана (меняется в настройках, пока список уже построен).
 +    private var kwGramTitleDisposable: Disposable?
++    
++    // KW Gram «Заголовок»: точечное обновление шапки при смене значения в настройках.
++    // Текст переписывается только когда там стоит обычный заголовок — индикаторы
++    // «Обновление»/«Ожидание сети» не перетираются. Вкладку и back-кнопку обновляет сам
++    // контроллер: там эти значения и живут.
++    private func kwGramApplyCustomTitle() {
++        guard case .chatList(.root) = self.location else {
++            return
++        }
++        let title = KWGramTitleRuntime.shared.title(accountKey: self.context.account.peerId.toInt64()) ?? self.context.sharedContext.currentPresentationData.with { $0 }.strings.DialogList_Title
++        if var titleContent = self.chatListTitle, !titleContent.activity, titleContent.text != title {
++            titleContent.text = title
++            self.chatListTitle = titleContent
++        }
++        self.parentController?.kwGramApplyCustomTabTitle(title)
++    }
      
      var leftButton: AnyComponentWithIdentity<NavigationButtonComponentEnvironment>?
      var rightButton: AnyComponentWithIdentity<NavigationButtonComponentEnvironment>?
-@@ -6992,6 +7023,21 @@ private final class ChatListLocationContext {
+@@ -6992,6 +7034,21 @@ private final class ChatListLocationContext {
          
          let context = self.context
          let location = self.location
@@ -17454,7 +17465,7 @@ index eafe9575..c919e073 100644
          let peerIdsAndOptions: Signal<(ChatListSelectionOptions, Set<PeerId>, Set<Int64>)?, NoError> = containerNode.currentItemState
          |> map { state, filterId -> (Set<PeerId>, Set<Int64>, Int32?)? in
              if !state.editing {
-@@ -7137,6 +7183,7 @@ private final class ChatListLocationContext {
+@@ -7137,6 +7194,7 @@ private final class ChatListLocationContext {
      deinit {
          self.titleDisposable?.dispose()
          self.stateDisposable?.dispose()
@@ -17462,7 +17473,7 @@ index eafe9575..c919e073 100644
      }
      
      private func updateChatList(
-@@ -7153,7 +7200,8 @@ private final class ChatListLocationContext {
+@@ -7153,7 +7211,8 @@ private final class ChatListLocationContext {
          switch location {
          case let .chatList(groupId):
              if groupId == .root {
