@@ -17521,6 +17521,94 @@ index 00000000..a57d48ef
 +        }
 +    }
 +}
+diff --git a/submodules/TelegramCore/Sources/KWGram/KWGramMuteDMFilter.swift b/submodules/TelegramCore/Sources/KWGram/KWGramMuteDMFilter.swift
+new file mode 100644
+index 00000000..e7cc1e9c
+--- /dev/null
++++ b/submodules/TelegramCore/Sources/KWGram/KWGramMuteDMFilter.swift
+@@ -0,0 +1,82 @@
++import Foundation
++import Postbox
++import KWGramCore
++
++/// «Мут ЛС» (KW Gram): drops incoming messages from muted private chats *before* they ever
++/// reach Postbox — the whole point of the feature is that a muted person's messages don't
++/// flash into the chat even for a frame. Called from `replayFinalState` in
++/// `AccountStateManagementUtils.swift` right before the single `transaction.addMessages`
++/// that applies every batch of incoming cloud messages (updates, getDifference, associated
++/// message resolution).
++///
++/// What happens to a dropped message:
++/// - it never enters Postbox → no history row, no chat-list preview, no in-app notification
++///   (`messagesForNotification` finds nothing for the id and skips it);
++/// - a `cloudChatRemoveMessages` operation is enqueued in the *same* transaction, so the
++///   always-running managed operation performs a real server-side `messages.deleteMessages`
++///   (revoke when «Удалять у всех» is on) — that is what keeps the message from coming
++///   back later through history/chat-list fetches, and it also feeds the returned pts
++///   correctly back into the account state.
++///
++/// Only messages *sent after* the mute started are dropped (`timestamp >= mutedAt`):
++/// history fetched later (replies, context resolution, hole fills routed through the same
++/// funnel) must keep pre-mute history intact, exactly like the Android `mute_ls` plugin,
++/// which only hooks message *arrival*.
++///
++/// Lives in `TelegramCore` itself for the same reason as `KWGramDeletedMessageCapture`:
++/// it needs `Namespaces`, `StoreMessage` and the internal
++/// `cloudChatAddRemoveMessagesOperation`, and `KWGramCore` must never depend back on
++/// `TelegramCore`.
++enum KWGramMuteDMFilter {
++    /// Returns the messages that should actually be added; enqueues server-side deletes for
++    /// the rest. Pure with respect to its inputs — reads settings and the muted list from
++    /// the transaction it is given.
++    static func filterIncoming(transaction: Transaction, accountPeerId: PeerId, messages: [StoreMessage]) -> [StoreMessage] {
++        // rawSettings: «Мут ЛС» — фича раздела «Чаты», её не должна гасить «Визуальная
++        // галка» (как и Gift Search, читаем raw).
++        let settings = KWGramCore.rawSettings(transaction: transaction)
++        guard settings.muteDmEnabled else {
++            return messages
++        }
++        let now = Int32(Date().timeIntervalSince1970)
++        let muted = KWGramMutedPeerStore.activeMutedAt(transaction: transaction, now: now)
++        guard !muted.isEmpty else {
++            return messages
++        }
++
++        var kept: [StoreMessage] = []
++        kept.reserveCapacity(messages.count)
++        var dropped: [PeerId: [MessageId]] = [:]
++
++        for message in messages {
++            guard message.flags.contains(.Incoming),
++                  case let .Id(id) = message.id,
++                  id.peerId.namespace == Namespaces.Peer.CloudUser,
++                  id.peerId != accountPeerId,
++                  let mutedAt = muted[id.peerId],
++                  message.timestamp >= mutedAt
++            else {
++                kept.append(message)
++                continue
++            }
++            dropped[id.peerId, default: []].append(id)
++        }
++
++        guard !dropped.isEmpty else {
++            return kept
++        }
++
++        // Одна серверная операция удаления на пир: managed-операция сама вычистит её из
++        // operation log после запроса (ошибка тоже глотается — ретраев нет).
++        for (peerId, ids) in dropped {
++            cloudChatAddRemoveMessagesOperation(
++                transaction: transaction,
++                peerId: peerId,
++                threadId: nil,
++                messageIds: ids,
++                type: settings.muteDmDeleteForEveryone ? .forEveryone : .forLocalPeer
++            )
++        }
++        return kept
++    }
++}
 diff --git a/submodules/TelegramCore/Sources/Network/FetchV2.swift b/submodules/TelegramCore/Sources/Network/FetchV2.swift
 index 1075a48e..a34917cd 100644
 --- a/submodules/TelegramCore/Sources/Network/FetchV2.swift
@@ -17765,10 +17853,24 @@ index 6cf628f0..100c203d 100644
       * If it is a support account, mark messages as read here as they are
       * not marked as read when chat is opened.
 diff --git a/submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift b/submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift
-index 58db6c71..2c433b09 100644
+index 58db6c71..b1f15218 100644
 --- a/submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift
 +++ b/submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift
-@@ -4440,6 +4440,11 @@ func replayFinalState(
+@@ -4257,6 +4257,13 @@ func replayFinalState(
+                     }
+                 }
+             
++                // KW Gram «Мут ЛС»: входящие от замьюченного собеседника выбрасываются до
++                // добавления в Postbox (без вспышки в чате и без уведомления), а для них в
++                // ту же транзакцию ставится серверное удаление сообщений — см.
++                // KWGramMuteDMFilter. Срабатывают только сообщения, отправленные уже после
++                // мьюта; ранее отправленная история остаётся.
++                messages = KWGramMuteDMFilter.filterIncoming(transaction: transaction, accountPeerId: accountPeerId, messages: messages)
++            
+                 let _ = transaction.addMessages(messages, location: location)
+                 if case .UpperHistoryBlock = location {
+                     for message in messages {
+@@ -4440,6 +4447,11 @@ func replayFinalState(
                      }
                  }
              case let .DeleteMessagesWithGlobalIds(ids):
@@ -17780,7 +17882,7 @@ index 58db6c71..2c433b09 100644
                  var resourceIds: [MediaResourceId] = []
                  transaction.deleteMessagesWithGlobalIds(ids, forEachMedia: { media in
                      addMessageMediaResourceIdsToRemove(media: media, resourceIds: &resourceIds)
-@@ -4449,6 +4454,9 @@ func replayFinalState(
+@@ -4449,6 +4461,9 @@ func replayFinalState(
                  }
                  deletedMessageIds.append(contentsOf: ids.map { .global($0) })
              case let .DeleteMessages(ids):
@@ -20471,7 +20573,7 @@ index e83aae1c..fcd27e55 100644
              self.unseenCloseFriendsColors = [theme.chatList.storyUnseenPrivateColors.topColor, theme.chatList.storyUnseenPrivateColors.bottomColor]
              self.seenColors = [theme.chatList.storySeenColors.topColor, theme.chatList.storySeenColors.bottomColor]
 diff --git a/submodules/TelegramUI/Sources/AccountContext.swift b/submodules/TelegramUI/Sources/AccountContext.swift
-index 4d971fd3..6baef36e 100644
+index 4d971fd3..d9b41da1 100644
 --- a/submodules/TelegramUI/Sources/AccountContext.swift
 +++ b/submodules/TelegramUI/Sources/AccountContext.swift
 @@ -8,6 +8,10 @@ import DeviceAccess
@@ -20506,12 +20608,15 @@ index 4d971fd3..6baef36e 100644
      public init(sharedContext: SharedAccountContextImpl, account: Account, limitsConfiguration: LimitsConfiguration, contentSettings: ContentSettings, appConfiguration: AppConfiguration, availableReplyColors: EngineAvailableColorOptions, availableProfileColors: EngineAvailableColorOptions, temp: Bool = false)
      {
          self.sharedContextImpl = sharedContext
-@@ -295,6 +311,25 @@ public final class AccountContextImpl: AccountContext {
+@@ -295,6 +311,28 @@ public final class AccountContextImpl: AccountContext {
          }
          self.fetchManager = FetchManagerImpl(postbox: account.postbox, storeManager: self.downloadedMediaStoreManager)
          if sharedContext.applicationBindings.isMainApp && !temp {
 +            self.kwGramGiftReceiveDisposable.set(KWGramPhantomGiftManager.observeIncomingGiftTransfers(account: account))
 +            KWGramFakeAdminRuntime.shared.start(accountKey: account.peerId.toInt64(), postbox: account.postbox)
++            // KW Gram «Мут ЛС»: зеркало настроек команд (enabled/!mute/!unmute/время), чтобы
++            // ChatController решал про перехват ввода синхронно, без чтения Postbox.
++            KWGramMuteDMRuntime.shared.start(accountKey: account.peerId.toInt64(), postbox: account.postbox)
 +            KWGramMonoColorRuntime.shared.start(accountKey: account.peerId.toInt64(), postbox: account.postbox)
 +            // KW Gram: «Подарки» search tab («Чаты» → «Поиск подарков») — install the push
 +            // closure (ChatListUI can't reach GiftViewScreen itself) and mirror the stored
@@ -20532,7 +20637,7 @@ index 4d971fd3..6baef36e 100644
              self.prefetchManager = PrefetchManagerImpl(sharedContext: sharedContext, account: account, engine: self.engine, fetchManager: self.fetchManager)
              self.wallpaperUploadManager = WallpaperUploadManagerImpl(sharedContext: sharedContext, account: account, presentationData: sharedContext.presentationData)
              self.themeUpdateManager = ThemeUpdateManagerImpl(sharedContext: sharedContext, account: account)
-@@ -502,9 +537,60 @@ public final class AccountContextImpl: AccountContext {
+@@ -502,9 +540,60 @@ public final class AccountContextImpl: AccountContext {
              }
              (self.animationRenderer as? DCTMultiAnimationRendererImpl)?.useYuvA = settings.compressedEmojiCache
          })
@@ -20638,6 +20743,28 @@ index b1ea96b8..f44d4ea3 100644
                  return icons
              } else {
                  return []
+diff --git a/submodules/TelegramUI/Sources/ApplicationContext.swift b/submodules/TelegramUI/Sources/ApplicationContext.swift
+index db742a0b..53df1a80 100644
+--- a/submodules/TelegramUI/Sources/ApplicationContext.swift
++++ b/submodules/TelegramUI/Sources/ApplicationContext.swift
+@@ -589,11 +589,13 @@ final class AuthorizedApplicationContext {
+                 return
+             }
+             
++            // KW Gram: экран «Обновление» (updateInfoController, заголовок Update_Title)
++            // дёргается из help.getAppUpdate каждые 12 часов и при каждом переходе соединения
++            // в online — а KW Gram ставится подписью из своих же релизов, сервер официальной
++            // версии из App Store ему не соответствует, поэтому плашка выскакивала бы на
++            // каждом запуске, а её единственная кнопка ведёт в App Store на чужой Telegram.
++            // Состояние сохраняем (где-то ещё может читаться), но не показываем никогда.
+             strongSelf.currentAppUpdateInfo = appUpdateInfo
+-            if let appUpdateInfo = appUpdateInfo {
+-                let controller = updateInfoController(context: strongSelf.context, appUpdateInfo: appUpdateInfo)
+-                strongSelf.mainWindow.present(controller, on: .update)
+-            }
+         }))
+         
+         if #available(iOS 10.0, *) {
 diff --git a/submodules/TelegramUI/Sources/Chat/ChatControllerMediaRecording.swift b/submodules/TelegramUI/Sources/Chat/ChatControllerMediaRecording.swift
 index 2e4d308a..af32837d 100644
 --- a/submodules/TelegramUI/Sources/Chat/ChatControllerMediaRecording.swift
@@ -20858,7 +20985,7 @@ index a1a8f61d..ab9ed439 100644
          return
      }
 diff --git a/submodules/TelegramUI/Sources/ChatController.swift b/submodules/TelegramUI/Sources/ChatController.swift
-index 1ea5595d..0f61d419 100644
+index 1ea5595d..f249ee35 100644
 --- a/submodules/TelegramUI/Sources/ChatController.swift
 +++ b/submodules/TelegramUI/Sources/ChatController.swift
 @@ -53,6 +53,8 @@ import StatisticsUI
@@ -20870,7 +20997,7 @@ index 1ea5595d..0f61d419 100644
  import InviteLinksUI
  import Markdown
  import TelegramPermissionsUI
-@@ -8878,6 +8880,25 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
+@@ -8878,6 +8880,42 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
              return
          }
          
@@ -20890,6 +21017,23 @@ index 1ea5595d..0f61d419 100644
 +                return (ChatTextInputState(inputText: NSAttributedString(string: "")), inputMode)
 +            }
 +            self.chatDisplayNode.historyNode.scrollToEndOfHistory()
++            return
++        }
++        
++        // KW Gram «Мут ЛС»: команда из «Чаты» → «Мут ЛС» (по умолчанию !mute / !unmute),
++        // введённая в личных сообщениях, никуда не отправляется — вместо неё собеседник
++        // замучивается (или размучивается), о чём показывается подсказка. Правила разбора и
++        // тексты — KWGramMuteDMHandleCommand; решение о перехвате принимается синхронно по
++        // кэшу KWGramMuteDMRuntime (прогревается в AccountContextImpl).
++        if let first = messages.first, case let .message(firstText, _, _, _, _, _, _, _, _, _) = first, kwGramMuteDMHandleCommand(context: self.context, peerId: peerId, text: firstText, onResult: { [weak self] feedback in
++            guard let self else {
++                return
++            }
++            self.present(UndoOverlayController(presentationData: self.presentationData, content: .info(title: nil, text: feedback, timeout: nil, customUndoText: nil), elevatedLayout: false, action: { _ in return false }), in: .current)
++        }) {
++            self.interfaceInteraction?.updateTextInputStateAndMode { _, inputMode in
++                return (ChatTextInputState(inputText: NSAttributedString(string: "")), inputMode)
++            }
 +            return
 +        }
 +        

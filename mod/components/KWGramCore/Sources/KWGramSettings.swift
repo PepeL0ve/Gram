@@ -285,6 +285,25 @@ public struct KWGramSettings: Codable, Equatable {
     /// (started from `AccountContextImpl`). Deliberately NOT part of `masterEnabled`'s
     /// gifts-gating: it's a «Чаты» search feature, not a gift visual.
     public var giftSearchTab: Bool
+    /// «Мьют в ЛС» (раздел «Чаты»): перехватывает настроенную команду, введённую в личных
+    /// сообщениях, и мьютит собеседника — его новые входящие сообщения выбрасываются из
+    /// Postbox ещё до добавления (`KWGramMuteDMFilter`) и удаляются на сервере через
+    /// штатную `cloudChatAddRemoveMessagesOperation`. The peer list itself lives in its own
+    /// preferences key (`KWGramMutedPeerStore`), not here.
+    public var muteDmEnabled: Bool
+    /// Команда мьюта — первый токен введённого текста, сравнивается без учёта регистра
+    /// (пустая строка = команда выключена, текст уходит как обычно).
+    public var muteDmCommand: String
+    /// Команда размьюта — по той же схеме.
+    public var muteDmUnmuteCommand: String
+    /// Длительность без аргумента (`!mute`) — как в Android-плагине: «1h», «30m», «2h 30m»;
+    /// пустая строка = «навсегда».
+    public var muteDmDefaultDuration: String
+    /// «Удалять у всех»: удалять сообщение и у собеседника (сервер разрешает в личках в
+    /// течение 48 часов, дальше сервер удаляет его по крайней мере у вас). Выключено —
+    /// удаляется только локально плюс серверное «удалить у себя», чтобы не вернулось при
+    /// догрузке истории.
+    public var muteDmDeleteForEveryone: Bool
 
     public static let defaultFakeStarsBalance: Int64 = 50_000
     public static let defaultFakeTonBalanceNanos: Int64 = 0
@@ -330,11 +349,16 @@ public struct KWGramSettings: Codable, Equatable {
             masterEnabled: true,
             timeInNicknameEnabled: false,
             timeInNicknameBackupLastName: nil,
-            giftSearchTab: true
+            giftSearchTab: true,
+            muteDmEnabled: true,
+            muteDmCommand: "!mute",
+            muteDmUnmuteCommand: "!unmute",
+            muteDmDefaultDuration: "1h",
+            muteDmDeleteForEveryone: true
         )
     }
 
-    public init(phantomGiftsEnabled: Bool, fakeStarsBalance: Int64, fakeTonBalanceNanos: Int64, fakeStarsDisplayEnabled: Bool, fakeTonDisplayEnabled: Bool, antiDeleteMessagesEnabled: Bool, ghostReaderEnabled: Bool, onlineMaskEnabled: Bool, ghostModeEnabled: Bool, ghostHideReadReceipts: Bool, ghostHideStoryViews: Bool, ghostHideOnline: Bool, ghostHideTyping: Bool, ghostAutoOffline: Bool, ghostReadOnAction: Bool, ghostExcludeAllChannels: Bool, ghostExcludeAllGroups: Bool, ghostExcludedFolderIds: [Int32], ghostExcludedPeerIds: [PeerId], antiDeleteExcludedPeerIds: [PeerId], visualEditEnabled: Bool, fromHimGiftsEnabled: Bool, voiceChangerMessagesEnabled: Bool, voicePreset: KWGramVoicePreset, uploadSpeedMode: KWGramSpeedMode, downloadSpeedMode: KWGramSpeedMode, fakeLocationEnabled: Bool, fakeLocationLatitude: Double, fakeLocationLongitude: Double, chatLockEnabled: Bool, chatLockPin: String, lockedChatPeerIds: [PeerId], localRublesBalanceKopecks: Int64, localRublesPurchaseEnabled: Bool, infinitePinsEnabled: Bool, legalPremiumEnabled: Bool, masterEnabled: Bool, timeInNicknameEnabled: Bool = false, timeInNicknameBackupLastName: String? = nil, giftSearchTab: Bool = true) {
+    public init(phantomGiftsEnabled: Bool, fakeStarsBalance: Int64, fakeTonBalanceNanos: Int64, fakeStarsDisplayEnabled: Bool, fakeTonDisplayEnabled: Bool, antiDeleteMessagesEnabled: Bool, ghostReaderEnabled: Bool, onlineMaskEnabled: Bool, ghostModeEnabled: Bool, ghostHideReadReceipts: Bool, ghostHideStoryViews: Bool, ghostHideOnline: Bool, ghostHideTyping: Bool, ghostAutoOffline: Bool, ghostReadOnAction: Bool, ghostExcludeAllChannels: Bool, ghostExcludeAllGroups: Bool, ghostExcludedFolderIds: [Int32], ghostExcludedPeerIds: [PeerId], antiDeleteExcludedPeerIds: [PeerId], visualEditEnabled: Bool, fromHimGiftsEnabled: Bool, voiceChangerMessagesEnabled: Bool, voicePreset: KWGramVoicePreset, uploadSpeedMode: KWGramSpeedMode, downloadSpeedMode: KWGramSpeedMode, fakeLocationEnabled: Bool, fakeLocationLatitude: Double, fakeLocationLongitude: Double, chatLockEnabled: Bool, chatLockPin: String, lockedChatPeerIds: [PeerId], localRublesBalanceKopecks: Int64, localRublesPurchaseEnabled: Bool, infinitePinsEnabled: Bool, legalPremiumEnabled: Bool, masterEnabled: Bool, timeInNicknameEnabled: Bool = false, timeInNicknameBackupLastName: String? = nil, giftSearchTab: Bool = true, muteDmEnabled: Bool = true, muteDmCommand: String = "!mute", muteDmUnmuteCommand: String = "!unmute", muteDmDefaultDuration: String = "1h", muteDmDeleteForEveryone: Bool = true) {
         self.phantomGiftsEnabled = phantomGiftsEnabled
         self.fakeStarsBalance = fakeStarsBalance
         self.fakeTonBalanceNanos = fakeTonBalanceNanos
@@ -375,6 +399,11 @@ public struct KWGramSettings: Codable, Equatable {
         self.timeInNicknameEnabled = timeInNicknameEnabled
         self.timeInNicknameBackupLastName = timeInNicknameBackupLastName
         self.giftSearchTab = giftSearchTab
+        self.muteDmEnabled = muteDmEnabled
+        self.muteDmCommand = muteDmCommand
+        self.muteDmUnmuteCommand = muteDmUnmuteCommand
+        self.muteDmDefaultDuration = muteDmDefaultDuration
+        self.muteDmDeleteForEveryone = muteDmDeleteForEveryone
     }
 
     /// Decoded field by field with `decodeIfPresent` rather than by the synthesized
@@ -447,6 +476,11 @@ public struct KWGramSettings: Codable, Equatable {
         self.timeInNicknameEnabled = try container.decodeIfPresent(Bool.self, forKey: .timeInNicknameEnabled) ?? defaults.timeInNicknameEnabled
         self.timeInNicknameBackupLastName = try container.decodeIfPresent(String.self, forKey: .timeInNicknameBackupLastName)
         self.giftSearchTab = try container.decodeIfPresent(Bool.self, forKey: .giftSearchTab) ?? defaults.giftSearchTab
+        self.muteDmEnabled = try container.decodeIfPresent(Bool.self, forKey: .muteDmEnabled) ?? defaults.muteDmEnabled
+        self.muteDmCommand = try container.decodeIfPresent(String.self, forKey: .muteDmCommand) ?? defaults.muteDmCommand
+        self.muteDmUnmuteCommand = try container.decodeIfPresent(String.self, forKey: .muteDmUnmuteCommand) ?? defaults.muteDmUnmuteCommand
+        self.muteDmDefaultDuration = try container.decodeIfPresent(String.self, forKey: .muteDmDefaultDuration) ?? defaults.muteDmDefaultDuration
+        self.muteDmDeleteForEveryone = try container.decodeIfPresent(Bool.self, forKey: .muteDmDeleteForEveryone) ?? defaults.muteDmDeleteForEveryone
     }
 
     /// A copy with just the **Подарки** section's visual features forced off (every stored value
@@ -508,6 +542,9 @@ public enum KWGramPreferencesKeys {
     public static let behavior = key(900_700)
     public static let fakeAdmin = key(900_800)
     public static let personalColors = key(900_900)
+    /// Список замьюченных собеседников «Мут ЛС» (`KWGramMutedPeerStore`) — динамические
+    /// per-peer данные, поэтому отдельным ключом, а не полями `KWGramSettings`.
+    public static let mutedPeers = key(900_950)
 }
 
 public enum KWGramCore {
