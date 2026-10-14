@@ -25,8 +25,9 @@ private final class KWGramMessagesArguments {
     let setMuteDefaultDuration: (String) -> Void
     let toggleMuteDeleteForEveryone: (Bool) -> Void
     let unmutePeer: (PeerId, String) -> Void
+    let setTitle: (String) -> Void
 
-    init(toggleAntiDelete: @escaping (Bool) -> Void, openExclusions: @escaping () -> Void, toggleVisualEdit: @escaping (Bool) -> Void, openHistory: @escaping () -> Void, clearHistory: @escaping () -> Void, exportChat: @escaping () -> Void, toggleGiftSearch: @escaping (Bool) -> Void, toggleMuteDm: @escaping (Bool) -> Void, setMuteCommand: @escaping (String) -> Void, setUnmuteCommand: @escaping (String) -> Void, setMuteDefaultDuration: @escaping (String) -> Void, toggleMuteDeleteForEveryone: @escaping (Bool) -> Void, unmutePeer: @escaping (PeerId, String) -> Void) {
+    init(toggleAntiDelete: @escaping (Bool) -> Void, openExclusions: @escaping () -> Void, toggleVisualEdit: @escaping (Bool) -> Void, openHistory: @escaping () -> Void, clearHistory: @escaping () -> Void, exportChat: @escaping () -> Void, toggleGiftSearch: @escaping (Bool) -> Void, toggleMuteDm: @escaping (Bool) -> Void, setMuteCommand: @escaping (String) -> Void, setUnmuteCommand: @escaping (String) -> Void, setMuteDefaultDuration: @escaping (String) -> Void, toggleMuteDeleteForEveryone: @escaping (Bool) -> Void, unmutePeer: @escaping (PeerId, String) -> Void, setTitle: @escaping (String) -> Void) {
         self.toggleAntiDelete = toggleAntiDelete
         self.openExclusions = openExclusions
         self.toggleVisualEdit = toggleVisualEdit
@@ -40,6 +41,7 @@ private final class KWGramMessagesArguments {
         self.setMuteDefaultDuration = setMuteDefaultDuration
         self.toggleMuteDeleteForEveryone = toggleMuteDeleteForEveryone
         self.unmutePeer = unmutePeer
+        self.setTitle = setTitle
     }
 }
 
@@ -51,6 +53,7 @@ private enum KWGramMessagesSection: Int32 {
     case export
     case search
     case muteDm
+    case title
 }
 
 private enum KWGramMessagesEntry: ItemListNodeEntry {
@@ -88,6 +91,10 @@ private enum KWGramMessagesEntry: ItemListNodeEntry {
     case mutedRow(id: Int32, peerId: PeerId, title: String, label: String)
     case muteFooter(String)
 
+    case titleHeader(String)
+    case titleInput(String, String)
+    case titleFooter(String)
+
     var section: ItemListSectionId {
         switch self {
         case .aboutText:
@@ -104,6 +111,8 @@ private enum KWGramMessagesEntry: ItemListNodeEntry {
             return KWGramMessagesSection.search.rawValue
         case .muteHeader, .muteToggle, .muteCommandInput, .unmuteCommandInput, .muteDurationInput, .muteDeleteForEveryoneToggle, .mutedHeader, .mutedRow, .muteFooter:
             return KWGramMessagesSection.muteDm.rawValue
+        case .titleHeader, .titleInput, .titleFooter:
+            return KWGramMessagesSection.title.rawValue
         }
     }
 
@@ -160,6 +169,12 @@ private enum KWGramMessagesEntry: ItemListNodeEntry {
         case .muteFooter:
             // После динамических строк: 23 + индекс всегда < 999 на реалистичном списке.
             return 999
+        case .titleHeader:
+            return 1000
+        case .titleInput:
+            return 1001
+        case .titleFooter:
+            return 1002
         }
     }
 
@@ -226,6 +241,14 @@ private enum KWGramMessagesEntry: ItemListNodeEntry {
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: title, label: label, sectionId: self.section, style: .blocks, action: {
                 arguments.unmutePeer(peerId, title)
             })
+        case let .titleHeader(title):
+            return ItemListHeaderItem(presentationData: presentationData, systemStyle: .glass, title: title, sectionId: self.section)
+        case let .titleInput(title, value):
+            return ItemListSingleLineInputItem(presentationData: presentationData, systemStyle: .glass, title: NSAttributedString(string: title), text: value, placeholder: "Чаты", type: .regular(capitalization: false, autocorrection: false), maxLength: 40, sectionId: self.section, textUpdated: { updated in
+                arguments.setTitle(updated)
+            }, action: {})
+        case let .titleFooter(title):
+            return ItemListTextItem(presentationData: presentationData, systemStyle: .glass, text: .markdown(title), sectionId: self.section)
         }
     }
 }
@@ -285,6 +308,10 @@ private func kwGramMessagesEntries(settings: KWGramSettings, historyCount: Int, 
     let muteCommand = settings.muteDmCommand.isEmpty ? "!mute" : settings.muteDmCommand
     let unmuteCommand = settings.muteDmUnmuteCommand.isEmpty ? "!unmute" : settings.muteDmUnmuteCommand
     entries.append(.muteFooter("В личных сообщениях: \(muteCommand) — замьютить, \(muteCommand) 1h — на время, \(unmuteCommand) — размуть. Команда собеседнику не отправляется."))
+
+    entries.append(.titleHeader("ЗАГОЛОВОК"))
+    entries.append(.titleInput("Заголовок главного экрана", settings.mainScreenTitle))
+    entries.append(.titleFooter("Подменяет стандартное «Чаты» в шапке и на вкладке главного списка чатов. Пусто — вернуть «Чаты»."))
 
     return entries
 }
@@ -390,6 +417,13 @@ public func kwGramMessagesSettingsController(context: AccountContext) -> ViewCon
             |> deliverOnMainQueue).start(next: { removed in
                 presentTooltipImpl?(removed ? "Размутил \(title)" : "\(title) не в муте.")
             })
+        },
+        setTitle: { value in
+            let _ = KWGramCore.updateSettingsInteractively(postbox: context.account.postbox, { settings in
+                var settings = settings
+                settings.mainScreenTitle = value
+                return settings
+            }).start()
         }
     )
 

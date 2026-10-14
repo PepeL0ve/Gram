@@ -304,6 +304,12 @@ public struct KWGramSettings: Codable, Equatable {
     /// удаляется только локально плюс серверное «удалить у себя», чтобы не вернулось при
     /// догрузке истории.
     public var muteDmDeleteForEveryone: Bool
+    /// «Заголовок» (главный экран): подменяет стандартный заголовок «Чаты» на главном
+    /// (корневом) списке чатов — и в шапке навигации, и на вкладке — на текст, введённый
+    /// пользователем. Пустая строка = стандартный «Чаты». Зеркалится в
+    /// `KWGramTitleRuntime` (стартует в `AccountContextImpl`), чтобы `ChatListController`
+    /// читал значение синхронно при построении заголовка.
+    public var mainScreenTitle: String
 
     public static let defaultFakeStarsBalance: Int64 = 50_000
     public static let defaultFakeTonBalanceNanos: Int64 = 0
@@ -354,11 +360,12 @@ public struct KWGramSettings: Codable, Equatable {
             muteDmCommand: "!mute",
             muteDmUnmuteCommand: "!unmute",
             muteDmDefaultDuration: "1h",
-            muteDmDeleteForEveryone: true
+            muteDmDeleteForEveryone: true,
+            mainScreenTitle: ""
         )
     }
 
-    public init(phantomGiftsEnabled: Bool, fakeStarsBalance: Int64, fakeTonBalanceNanos: Int64, fakeStarsDisplayEnabled: Bool, fakeTonDisplayEnabled: Bool, antiDeleteMessagesEnabled: Bool, ghostReaderEnabled: Bool, onlineMaskEnabled: Bool, ghostModeEnabled: Bool, ghostHideReadReceipts: Bool, ghostHideStoryViews: Bool, ghostHideOnline: Bool, ghostHideTyping: Bool, ghostAutoOffline: Bool, ghostReadOnAction: Bool, ghostExcludeAllChannels: Bool, ghostExcludeAllGroups: Bool, ghostExcludedFolderIds: [Int32], ghostExcludedPeerIds: [PeerId], antiDeleteExcludedPeerIds: [PeerId], visualEditEnabled: Bool, fromHimGiftsEnabled: Bool, voiceChangerMessagesEnabled: Bool, voicePreset: KWGramVoicePreset, uploadSpeedMode: KWGramSpeedMode, downloadSpeedMode: KWGramSpeedMode, fakeLocationEnabled: Bool, fakeLocationLatitude: Double, fakeLocationLongitude: Double, chatLockEnabled: Bool, chatLockPin: String, lockedChatPeerIds: [PeerId], localRublesBalanceKopecks: Int64, localRublesPurchaseEnabled: Bool, infinitePinsEnabled: Bool, legalPremiumEnabled: Bool, masterEnabled: Bool, timeInNicknameEnabled: Bool = false, timeInNicknameBackupLastName: String? = nil, giftSearchTab: Bool = true, muteDmEnabled: Bool = true, muteDmCommand: String = "!mute", muteDmUnmuteCommand: String = "!unmute", muteDmDefaultDuration: String = "1h", muteDmDeleteForEveryone: Bool = true) {
+    public init(phantomGiftsEnabled: Bool, fakeStarsBalance: Int64, fakeTonBalanceNanos: Int64, fakeStarsDisplayEnabled: Bool, fakeTonDisplayEnabled: Bool, antiDeleteMessagesEnabled: Bool, ghostReaderEnabled: Bool, onlineMaskEnabled: Bool, ghostModeEnabled: Bool, ghostHideReadReceipts: Bool, ghostHideStoryViews: Bool, ghostHideOnline: Bool, ghostHideTyping: Bool, ghostAutoOffline: Bool, ghostReadOnAction: Bool, ghostExcludeAllChannels: Bool, ghostExcludeAllGroups: Bool, ghostExcludedFolderIds: [Int32], ghostExcludedPeerIds: [PeerId], antiDeleteExcludedPeerIds: [PeerId], visualEditEnabled: Bool, fromHimGiftsEnabled: Bool, voiceChangerMessagesEnabled: Bool, voicePreset: KWGramVoicePreset, uploadSpeedMode: KWGramSpeedMode, downloadSpeedMode: KWGramSpeedMode, fakeLocationEnabled: Bool, fakeLocationLatitude: Double, fakeLocationLongitude: Double, chatLockEnabled: Bool, chatLockPin: String, lockedChatPeerIds: [PeerId], localRublesBalanceKopecks: Int64, localRublesPurchaseEnabled: Bool, infinitePinsEnabled: Bool, legalPremiumEnabled: Bool, masterEnabled: Bool, timeInNicknameEnabled: Bool = false, timeInNicknameBackupLastName: String? = nil, giftSearchTab: Bool = true, muteDmEnabled: Bool = true, muteDmCommand: String = "!mute", muteDmUnmuteCommand: String = "!unmute", muteDmDefaultDuration: String = "1h", muteDmDeleteForEveryone: Bool = true, mainScreenTitle: String = "") {
         self.phantomGiftsEnabled = phantomGiftsEnabled
         self.fakeStarsBalance = fakeStarsBalance
         self.fakeTonBalanceNanos = fakeTonBalanceNanos
@@ -404,6 +411,7 @@ public struct KWGramSettings: Codable, Equatable {
         self.muteDmUnmuteCommand = muteDmUnmuteCommand
         self.muteDmDefaultDuration = muteDmDefaultDuration
         self.muteDmDeleteForEveryone = muteDmDeleteForEveryone
+        self.mainScreenTitle = mainScreenTitle
     }
 
     /// Decoded field by field with `decodeIfPresent` rather than by the synthesized
@@ -481,6 +489,7 @@ public struct KWGramSettings: Codable, Equatable {
         self.muteDmUnmuteCommand = try container.decodeIfPresent(String.self, forKey: .muteDmUnmuteCommand) ?? defaults.muteDmUnmuteCommand
         self.muteDmDefaultDuration = try container.decodeIfPresent(String.self, forKey: .muteDmDefaultDuration) ?? defaults.muteDmDefaultDuration
         self.muteDmDeleteForEveryone = try container.decodeIfPresent(Bool.self, forKey: .muteDmDeleteForEveryone) ?? defaults.muteDmDeleteForEveryone
+        self.mainScreenTitle = try container.decodeIfPresent(String.self, forKey: .mainScreenTitle) ?? defaults.mainScreenTitle
     }
 
     /// A copy with just the **Подарки** section's visual features forced off (every stored value

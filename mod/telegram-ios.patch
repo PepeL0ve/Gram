@@ -16754,6 +16754,468 @@ index 63c13124..cd2b61b6 100644
              if dark, let colors = self.profileStoryDarkColors[color.rawValue] {
                  return colors
              } else if let colors = self.profileStoryColors[color.rawValue] {
+diff --git a/submodules/AuthorizationUI/Sources/AuthorizationSequenceBotTokenEntryController.swift b/submodules/AuthorizationUI/Sources/AuthorizationSequenceBotTokenEntryController.swift
+new file mode 100644
+index 00000000..5dbb6de0
+--- /dev/null
++++ b/submodules/AuthorizationUI/Sources/AuthorizationSequenceBotTokenEntryController.swift
+@@ -0,0 +1,271 @@
++import Foundation
++import UIKit
++import AsyncDisplayKit
++import Display
++import TelegramPresentationData
++import AuthorizationUtils
++import SolidRoundedButtonNode
++import ProgressNavigationButtonNode
++import AccountContext
++
++/// KW Gram «Bot Login»: экран ввода токена бота (@BotFather). Компактная копия
++/// email-entry-экрана — заголовок, пояснение, поле ввода, кнопка «Войти».
++final class AuthorizationSequenceBotTokenEntryControllerNode: ASDisplayNode, UITextFieldDelegate {
++    private let strings: PresentationStrings
++    private let theme: PresentationTheme
++    
++    private let titleNode: ASTextNode
++    private let noticeNode: ASTextNode
++    private let tokenField: TextFieldNode
++    private let tokenSeparatorNode: ASDisplayNode
++    private let proceedNode: SolidRoundedButtonNode
++    
++    private var layoutArguments: (ContainerViewLayout, CGFloat)?
++    
++    var currentToken: String {
++        return (self.tokenField.textField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
++    }
++    
++    var proceedWithToken: ((String) -> Void)?
++    
++    var inProgress: Bool = false {
++        didSet {
++            self.tokenField.alpha = self.inProgress ? 0.6 : 1.0
++            
++            if self.inProgress != oldValue {
++                if self.inProgress {
++                    self.proceedNode.transitionToProgress()
++                } else {
++                    self.proceedNode.transitionFromProgress()
++                }
++            }
++        }
++    }
++    
++    init(strings: PresentationStrings, theme: PresentationTheme) {
++        self.strings = strings
++        self.theme = theme
++        
++        self.titleNode = ASTextNode()
++        self.titleNode.isUserInteractionEnabled = false
++        self.titleNode.displaysAsynchronously = false
++        self.titleNode.attributedText = NSAttributedString(string: KWGramBotLoginStrings.botTokenTitle, font: Font.bold(28.0), textColor: theme.list.itemPrimaryTextColor)
++        
++        self.noticeNode = ASTextNode()
++        self.noticeNode.isUserInteractionEnabled = false
++        self.noticeNode.displaysAsynchronously = false
++        self.noticeNode.lineSpacing = 0.1
++        self.noticeNode.attributedText = NSAttributedString(string: KWGramBotLoginStrings.botTokenDescription, font: Font.regular(16.0), textColor: theme.list.itemSecondaryTextColor, paragraphAlignment: .center)
++        
++        self.proceedNode = SolidRoundedButtonNode(title: KWGramBotLoginStrings.botTokenProceed, theme: SolidRoundedButtonTheme(theme: theme), glass: false, height: 50.0, cornerRadius: 50.0 * 0.5)
++        self.proceedNode.progressType = .embedded
++        
++        self.tokenSeparatorNode = ASDisplayNode()
++        self.tokenSeparatorNode.isLayerBacked = true
++        self.tokenSeparatorNode.backgroundColor = theme.list.itemPlainSeparatorColor
++        
++        self.tokenField = TextFieldNode()
++        self.tokenField.textField.font = Font.regular(20.0)
++        self.tokenField.textField.textColor = theme.list.itemPrimaryTextColor
++        self.tokenField.textField.textAlignment = .natural
++        self.tokenField.textField.autocorrectionType = .no
++        self.tokenField.textField.autocapitalizationType = .none
++        self.tokenField.textField.keyboardType = .asciiCapable
++        self.tokenField.textField.returnKeyType = .go
++        self.tokenField.textField.enablesReturnKeyAutomatically = true
++        self.tokenField.textField.keyboardAppearance = theme.rootController.keyboardColor.keyboardAppearance
++        self.tokenField.textField.disableAutomaticKeyboardHandling = [.forward, .backward]
++        self.tokenField.textField.tintColor = theme.list.itemAccentColor
++        self.tokenField.textField.placeholder = KWGramBotLoginStrings.botTokenPlaceholder
++        
++        super.init()
++        
++        self.setViewBlock({
++            return UITracingLayerView()
++        })
++        
++        self.backgroundColor = self.theme.list.plainBackgroundColor
++        
++        self.tokenField.textField.delegate = self
++        
++        self.addSubnode(self.tokenSeparatorNode)
++        self.addSubnode(self.tokenField)
++        self.addSubnode(self.titleNode)
++        self.addSubnode(self.proceedNode)
++        self.addSubnode(self.noticeNode)
++        
++        self.proceedNode.pressed = { [weak self] in
++            self?.proceedPressed()
++        }
++    }
++    
++    func containerLayoutUpdated(_ layout: ContainerViewLayout, navigationBarHeight: CGFloat, transition: ContainedViewLayoutTransition) {
++        self.layoutArguments = (layout, navigationBarHeight)
++        
++        var insets = layout.insets(options: [])
++        insets.top = layout.statusBarHeight ?? 20.0
++        if let inputHeight = layout.inputHeight {
++            insets.bottom = max(inputHeight, insets.bottom)
++        }
++        
++        let titleInset: CGFloat = layout.size.width > 320.0 ? 18.0 : 0.0
++        let inset: CGFloat = 24.0
++        let maximumWidth: CGFloat = min(430.0, layout.size.width)
++        
++        let titleSize = self.titleNode.measure(CGSize(width: maximumWidth, height: CGFloat.greatestFiniteMagnitude))
++        let noticeSize = self.noticeNode.measure(CGSize(width: maximumWidth - 80.0, height: CGFloat.greatestFiniteMagnitude))
++        let proceedHeight = self.proceedNode.updateLayout(width: maximumWidth - 48.0, transition: transition)
++        let proceedSize = CGSize(width: maximumWidth - 48.0, height: proceedHeight)
++        
++        var items: [AuthorizationLayoutItem] = []
++        
++        items.append(AuthorizationLayoutItem(node: self.titleNode, size: titleSize, spacingBefore: AuthorizationLayoutItemSpacing(weight: titleInset, maxValue: titleInset), spacingAfter: AuthorizationLayoutItemSpacing(weight: 0.0, maxValue: 0.0)))
++        items.append(AuthorizationLayoutItem(node: self.noticeNode, size: noticeSize, spacingBefore: AuthorizationLayoutItemSpacing(weight: 18.0, maxValue: 18.0), spacingAfter: AuthorizationLayoutItemSpacing(weight: 0.0, maxValue: 0.0)))
++        items.append(AuthorizationLayoutItem(node: self.tokenField, size: CGSize(width: maximumWidth - 88.0, height: 44.0), spacingBefore: AuthorizationLayoutItemSpacing(weight: 18.0, maxValue: 30.0), spacingAfter: AuthorizationLayoutItemSpacing(weight: 0.0, maxValue: 0.0)))
++        items.append(AuthorizationLayoutItem(node: self.tokenSeparatorNode, size: CGSize(width: maximumWidth - 48.0, height: UIScreenPixel), spacingBefore: AuthorizationLayoutItemSpacing(weight: 0.0, maxValue: 0.0), spacingAfter: AuthorizationLayoutItemSpacing(weight: 0.0, maxValue: 0.0)))
++        
++        if layout.size.width <= 320.0 {
++            insets.top = navigationBarHeight
++            self.proceedNode.isHidden = true
++        } else {
++            self.proceedNode.isHidden = false
++            let buttonFrame = CGRect(origin: CGPoint(x: floorToScreenPixels((layout.size.width - proceedSize.width) / 2.0), y: layout.size.height - insets.bottom - proceedSize.height - inset), size: proceedSize)
++            transition.updateFrame(node: self.proceedNode, frame: buttonFrame)
++        }
++        
++        let _ = layoutAuthorizationItems(bounds: CGRect(origin: CGPoint(x: 0.0, y: insets.top), size: CGSize(width: layout.size.width, height: layout.size.height - insets.top - insets.bottom - 120.0)), items: items, transition: transition, failIfDoesNotFit: false)
++    }
++    
++    func activateInput() {
++        self.tokenField.textField.becomeFirstResponder()
++    }
++    
++    func animateError() {
++        self.tokenField.layer.addShakeAnimation()
++    }
++    
++    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
++        self.proceedWithToken?(self.currentToken)
++        return false
++    }
++    
++    @objc private func proceedPressed() {
++        self.proceedWithToken?(self.currentToken)
++    }
++}
++
++/// KW Gram «Bot Login»: контроллер экрана ввода токена бота. Открывается из меню «⋮» на
++/// экране ввода номера; по кнопке «Войти» вызывает `proceedWithToken`, а сам вход
++/// выполняет `AuthorizationSequenceController` через `authorizeWithBotToken`.
++final class AuthorizationSequenceBotTokenEntryController: ViewController {
++    private var controllerNode: AuthorizationSequenceBotTokenEntryControllerNode {
++        return self.displayNode as! AuthorizationSequenceBotTokenEntryControllerNode
++    }
++    
++    private var validLayout: ContainerViewLayout?
++    
++    private let sharedContext: SharedAccountContext
++    private let presentationData: PresentationData
++    
++    var proceedWithToken: ((String) -> Void)?
++    
++    private let hapticFeedback = HapticFeedback()
++    
++    var inProgress: Bool = false {
++        didSet {
++            self.updateNavigationItems()
++            if self.isNodeLoaded {
++                self.controllerNode.inProgress = self.inProgress
++            }
++        }
++    }
++    
++    init(sharedContext: SharedAccountContext, presentationData: PresentationData, back: @escaping () -> Void) {
++        self.sharedContext = sharedContext
++        self.presentationData = presentationData
++        
++        super.init(navigationBarPresentationData: NavigationBarPresentationData(theme: AuthorizationSequenceController.navigationBarTheme(presentationData.theme), strings: NavigationBarStrings(presentationStrings: presentationData.strings)))
++        
++        self.supportedOrientations = ViewControllerSupportedOrientations(regularSize: .all, compactSize: .portrait)
++        
++        self.hasActiveInput = true
++        
++        self.statusBar.statusBarStyle = presentationData.theme.intro.statusBarStyle.style
++        
++        self.attemptNavigation = { _ in
++            return false
++        }
++        self.navigationBar?.backPressed = {
++            back()
++        }
++    }
++    
++    required init(coder aDecoder: NSCoder) {
++        fatalError("init(coder:) has not been implemented")
++    }
++    
++    override public func loadDisplayNode() {
++        self.displayNode = AuthorizationSequenceBotTokenEntryControllerNode(strings: self.presentationData.strings, theme: self.presentationData.theme)
++        self.displayNodeDidLoad()
++        
++        self.controllerNode.inProgress = self.inProgress
++        
++        self.controllerNode.proceedWithToken = { [weak self] token in
++            guard let self else {
++                return
++            }
++            if token.isEmpty {
++                self.hapticFeedback.error()
++                self.controllerNode.animateError()
++            } else {
++                self.proceedWithToken?(token)
++            }
++        }
++    }
++    
++    override func viewDidAppear(_ animated: Bool) {
++        super.viewDidAppear(animated)
++        
++        if let navigationController = self.navigationController as? NavigationController, let layout = self.validLayout {
++            addTemporaryKeyboardSnapshotView(navigationController: navigationController, layout: layout)
++        }
++        
++        self.controllerNode.activateInput()
++    }
++    
++    func updateNavigationItems() {
++        guard let layout = self.validLayout, layout.size.width < 360.0 else {
++            return
++        }
++        
++        if self.inProgress {
++            let item = UIBarButtonItem(customDisplayNode: ProgressNavigationButtonNode(color: self.presentationData.theme.rootController.navigationBar.accentTextColor))
++            self.navigationItem.rightBarButtonItem = item
++        } else {
++            self.navigationItem.rightBarButtonItem = UIBarButtonItem(title: KWGramBotLoginStrings.botTokenProceed, style: .done, target: self, action: #selector(self.nextPressed))
++        }
++    }
++    
++    override public func containerLayoutUpdated(_ layout: ContainerViewLayout, transition: ContainedViewLayoutTransition) {
++        super.containerLayoutUpdated(layout, transition: transition)
++        
++        let hadLayout = self.validLayout != nil
++        self.validLayout = layout
++        
++        if !hadLayout {
++            self.updateNavigationItems()
++        }
++        
++        self.controllerNode.containerLayoutUpdated(layout, navigationBarHeight: self.navigationLayout(layout: layout).navigationFrame.maxY, transition: transition)
++    }
++    
++    @objc private func nextPressed() {
++        let token = self.controllerNode.currentToken
++        if token.isEmpty {
++            self.hapticFeedback.error()
++            self.controllerNode.animateError()
++        } else {
++            self.proceedWithToken?(token)
++        }
++    }
++}
+diff --git a/submodules/AuthorizationUI/Sources/AuthorizationSequenceController.swift b/submodules/AuthorizationUI/Sources/AuthorizationSequenceController.swift
+index f1edb805..eb615ac8 100644
+--- a/submodules/AuthorizationUI/Sources/AuthorizationSequenceController.swift
++++ b/submodules/AuthorizationUI/Sources/AuthorizationSequenceController.swift
+@@ -194,6 +194,13 @@ public final class AuthorizationSequenceController: NavigationController, ASAuth
+                 strongSelf.account = updatedAccount
+                 strongSelf.inAppPurchaseManager = InAppPurchaseManager(engine: .unauthorized(strongSelf.engine))
+             }
++            // KW Gram «Bot Login»: «⋮» на экране номера → ввод токена бота.
++            controller.loginWithBotToken = { [weak self, weak controller] in
++                guard let self, let controller else {
++                    return
++                }
++                self.beginBotLogin(from: controller)
++            }
+             controller.loginWithNumber = { [weak self, weak controller] number, syncContacts in
+                 guard let self else {
+                     return
+@@ -1358,6 +1365,42 @@ public final class AuthorizationSequenceController: NavigationController, ASAuth
+         }
+     }
+     
++    // KW Gram «Bot Login»: открывает экран ввода токена бота и выполняет вход через штатный
++    // auth.importBotAuthorization. Успешный ответ переводит аккаунт в .authorized — дальше
++    // штатный пайплайн (stateDisposable → authorizationCompleted) завершает вход сам.
++    private func beginBotLogin(from controller: ViewController) {
++        let tokenController = AuthorizationSequenceBotTokenEntryController(sharedContext: self.sharedContext, presentationData: self.presentationData, back: { [weak self] in
++            self?.popViewController(animated: true)
++        })
++        tokenController.proceedWithToken = { [weak self, weak tokenController] token in
++            guard let self else {
++                return
++            }
++            tokenController?.inProgress = true
++            self.actionDisposable.set((authorizeWithBotToken(accountManager: self.sharedContext.accountManager, account: self.account, botToken: token, syncContacts: true)
++            |> deliverOnMainQueue).startStrict(error: { error in
++                Queue.mainQueue().async {
++                    guard let self, let tokenController else {
++                        return
++                    }
++                    tokenController.inProgress = false
++                    
++                    let text: String
++                    switch error {
++                        case .invalidToken:
++                            text = KWGramBotLoginStrings.invalidTokenError
++                        case .floodWait:
++                            text = KWGramBotLoginStrings.floodWaitError
++                        case .generic:
++                            text = KWGramBotLoginStrings.genericError
++                    }
++                    tokenController.present(textAlertController(sharedContext: self.sharedContext, title: nil, text: text, actions: [TextAlertAction(type: .defaultAction, title: self.presentationData.strings.Common_OK, action: {})]), in: .window(.root))
++                }
++            }))
++        }
++        self.pushViewController(tokenController, animated: true)
++    }
++    
+     override public func setViewControllers(_ viewControllers: [UIViewController], animated: Bool) {
+         let wasEmpty = self.viewControllers.isEmpty
+         super.setViewControllers(viewControllers, animated: animated)
+diff --git a/submodules/AuthorizationUI/Sources/AuthorizationSequencePhoneEntryController.swift b/submodules/AuthorizationUI/Sources/AuthorizationSequencePhoneEntryController.swift
+index 9f9d8866..2f446840 100644
+--- a/submodules/AuthorizationUI/Sources/AuthorizationSequencePhoneEntryController.swift
++++ b/submodules/AuthorizationUI/Sources/AuthorizationSequencePhoneEntryController.swift
+@@ -11,6 +11,7 @@ import AccountContext
+ import CountrySelectionUI
+ import PhoneNumberFormat
+ import DebugSettingsUI
++import MoreButtonNode
+ import MessageUI
+ import AuthenticationServices
+ 
+@@ -56,6 +57,10 @@ public final class AuthorizationSequencePhoneEntryController: ViewController, MF
+     }
+     public var loginWithNumber: ((String, Bool) -> Void)?
+     public var loginWithPasskey: ((AuthorizationPasskeyData, Bool) -> Void)?
++    /// KW Gram «Bot Login»: запуск входа по токену бота (кнопка «⋮»).
++    public var loginWithBotToken: (() -> Void)?
++    /// KW Gram «Bot Login»: «⋮» стоит справа (слева занято кнопкой закрытия).
++    private var botLoginItemIsOnRight = false
+     var accountUpdated: ((UnauthorizedAccount) -> Void)?
+     
+     weak var confirmationController: PhoneConfirmationController?
+@@ -94,6 +99,15 @@ public final class AuthorizationSequencePhoneEntryController: ViewController, MF
+             self.navigationItem.leftBarButtonItem = UIBarButtonItem(title: "___close", style: .plain, target: self, action: #selector(self.cancelPressed))
+         }
+         
++        // KW Gram «Bot Login»: кнопка «⋮» открывает вход по токену бота. Слева — когда там
++        // нет «закрыть»; иначе справа (там на узких экранах ещё «Далее» — они в одной панели).
++        self.botLoginItemIsOnRight = !otherAccountPhoneNumbers.1.isEmpty
++        if self.botLoginItemIsOnRight {
++            self.navigationItem.rightBarButtonItem = UIBarButtonItem(customDisplayNode: self.botLoginMoreButtonNode())
++        } else {
++            self.navigationItem.leftBarButtonItem = UIBarButtonItem(customDisplayNode: self.botLoginMoreButtonNode())
++        }
++        
+         if let countriesConfiguration {
+             AuthorizationSequenceCountrySelectionController.setupCountryCodes(countries: countriesConfiguration.countries, codesByPrefix: countriesConfiguration.countriesByPrefix)
+         }
+@@ -111,6 +125,45 @@ public final class AuthorizationSequencePhoneEntryController: ViewController, MF
+         self.back()
+     }
+     
++    // KW Gram «Bot Login»: кнопка «⋮» в стиле прочих экранов авторизации — открывает
++    // ввод токена бота.
++    private func botLoginMoreButtonNode() -> MoreButtonNode {
++        let node = MoreButtonNode(theme: self.presentationData.theme)
++        node.iconNode.enqueueState(.more, animated: false)
++        node.action = { [weak self] _, _ in
++            self?.botLoginPressed()
++        }
++        return node
++    }
++    
++    @objc private func botLoginPressed() {
++        self.loginWithBotToken?()
++    }
++    
++    // KW Gram «Bot Login»: на узких экранах справа стоят и «Далее», и «⋮» — они должны
++    // помещаться в одной панели, иначе перетирают друг друга.
++    private func makeCombinedRightBarItem() -> UIBarButtonItem {
++        let nextButton = UIButton(type: .system)
++        nextButton.setTitle(self.presentationData.strings.Common_Next, for: .normal)
++        nextButton.titleLabel?.font = UIFont.systemFont(ofSize: 17.0, weight: .semibold)
++        nextButton.setTitleColor(self.presentationData.theme.rootController.navigationBar.accentTextColor, for: .normal)
++        nextButton.addTarget(self, action: #selector(self.nextPressed), for: .touchUpInside)
++        
++        let moreButton = UIButton(type: .system)
++        moreButton.setTitle("⋮", for: .normal)
++        moreButton.titleLabel?.font = UIFont.systemFont(ofSize: 24.0, weight: .regular)
++        moreButton.setTitleColor(self.presentationData.theme.rootController.navigationBar.accentTextColor, for: .normal)
++        moreButton.addTarget(self, action: #selector(self.botLoginPressed), for: .touchUpInside)
++        
++        let stack = UIStackView(arrangedSubviews: [nextButton, moreButton])
++        stack.axis = .horizontal
++        stack.alignment = .center
++        stack.spacing = 8.0
++        stack.sizeToFit()
++        
++        return UIBarButtonItem(customView: stack)
++    }
++    
+     func updateNavigationItems() {
+         guard let layout = self.validLayout, layout.size.width < 360.0 else {
+             return
+@@ -119,6 +172,9 @@ public final class AuthorizationSequencePhoneEntryController: ViewController, MF
+         if self.inProgress {
+             let item = UIBarButtonItem(customDisplayNode: ProgressNavigationButtonNode(color: self.presentationData.theme.rootController.navigationBar.accentTextColor))
+             self.navigationItem.rightBarButtonItem = item
++        } else if self.botLoginItemIsOnRight {
++            // KW Gram «Bot Login»: справа и «Далее», и «⋮» — в одной панели.
++            self.navigationItem.rightBarButtonItem = self.makeCombinedRightBarItem()
+         } else {
+             self.navigationItem.rightBarButtonItem = UIBarButtonItem(title: self.presentationData.strings.Common_Next, style: .done, target: self, action: #selector(self.nextPressed))
+         }
+diff --git a/submodules/AuthorizationUI/Sources/KWGramBotLoginStrings.swift b/submodules/AuthorizationUI/Sources/KWGramBotLoginStrings.swift
+new file mode 100644
+index 00000000..cfb46fb7
+--- /dev/null
++++ b/submodules/AuthorizationUI/Sources/KWGramBotLoginStrings.swift
+@@ -0,0 +1,23 @@
++import Foundation
++
++/// KW Gram «Bot Login»: тексты экрана входа по токену бота. Внутренние (internal) — видны
++/// всем файлам модуля AuthorizationUI, включая экран ввода токена и меню «⋮» на экране
++/// номера телефона. Локализацию штатными strings не выносим: фича не переводится.
++enum KWGramBotLoginStrings {
++    /// Пункт меню «⋮» на экране ввода номера телефона.
++    static let menuItemTitle = "Вход по токену бота"
++    
++    static let botTokenTitle = "Вход по токену бота"
++    
++    static let botTokenDescription = "Вставьте токен из @BotFather — учётная запись бота откроется как отдельный аккаунт на этом устройстве."
++    
++    static let botTokenPlaceholder = "123456789:AA..."
++    
++    static let botTokenProceed = "Войти"
++    
++    static let invalidTokenError = "Токен не принят. Проверьте, что он скопирован целиком из @BotFather."
++    
++    static let floodWaitError = "Слишком много попыток. Повторите вход чуть позже."
++    
++    static let genericError = "Не удалось войти по токену. Проверьте соединение и попробуйте снова."
++}
 diff --git a/submodules/AvatarNode/BUILD b/submodules/AvatarNode/BUILD
 index 3aad72c5..a8ea3074 100644
 --- a/submodules/AvatarNode/BUILD
@@ -16879,17 +17341,143 @@ index 9202c258..b3404fce 100644
                  if conferenceAvatars.count > 1 {
                      var peersString = ""
 diff --git a/submodules/ChatListUI/BUILD b/submodules/ChatListUI/BUILD
-index 1eececec..cf10ff47 100644
+index 1eececec..c2334325 100644
 --- a/submodules/ChatListUI/BUILD
 +++ b/submodules/ChatListUI/BUILD
-@@ -132,6 +132,7 @@ swift_library(
+@@ -132,6 +132,8 @@ swift_library(
          "//submodules/TelegramUI/Components/AvatarComponent",
          "//submodules/TelegramUI/Components/PeerManagement/OwnershipTransferController",
          "//submodules/TelegramUI/Components/GlassControls",
 +        "//submodules/TelegramUI/Components/KWGram/KWGramGiftSearch",
++        "//submodules/TelegramUI/Components/KWGram/KWGramCore",
      ],
      visibility = [
          "//visibility:public",
+diff --git a/submodules/ChatListUI/Sources/ChatListController.swift b/submodules/ChatListUI/Sources/ChatListController.swift
+index eafe9575..c919e073 100644
+--- a/submodules/ChatListUI/Sources/ChatListController.swift
++++ b/submodules/ChatListUI/Sources/ChatListController.swift
+@@ -5,6 +5,7 @@ import SwiftSignalKit
+ import AsyncDisplayKit
+ import Display
+ import TelegramCore
++import KWGramCore
+ import TelegramPresentationData
+ import TelegramUIPreferences
+ import TelegramBaseController
+@@ -293,7 +294,8 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController
+         switch self.location {
+         case let .chatList(groupId):
+             if groupId == .root {
+-                title = self.presentationData.strings.DialogList_Title
++                // KW Gram «Заголовок»: подменяем стандартное «Чаты» на введённое пользователем.
++                title = KWGramTitleRuntime.shared.title(accountKey: context.account.peerId.toInt64()) ?? self.presentationData.strings.DialogList_Title
+             } else {
+                 title = self.presentationData.strings.ChatList_ArchivedChatsTitle
+             }
+@@ -328,7 +330,8 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController
+             switch self.location {
+             case let .chatList(groupId):
+                 if groupId == .root {
+-                    self.tabBarItem.title = self.presentationData.strings.DialogList_Title
++                    // KW Gram «Заголовок»: вкладка «Чаты» на главном экране.
++                    self.tabBarItem.title = KWGramTitleRuntime.shared.title(accountKey: self.context.account.peerId.toInt64()) ?? self.presentationData.strings.DialogList_Title
+                     
+                     let icon: UIImage?
+                     if useSpecialTabBarIcons() {
+@@ -931,8 +934,10 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController
+     
+     private func updateThemeAndStrings() {
+         if case .chatList(.root) = self.location {
+-            self.tabBarItem.title = self.presentationData.strings.DialogList_Title
+-            let backBarButtonItem = UIBarButtonItem(title: self.presentationData.strings.DialogList_Title, style: .plain, target: nil, action: nil)
++            // KW Gram «Заголовок»: пересчёт при смене темы/локали.
++            let kwGramTitle = KWGramTitleRuntime.shared.title(accountKey: self.context.account.peerId.toInt64()) ?? self.presentationData.strings.DialogList_Title
++            self.tabBarItem.title = kwGramTitle
++            let backBarButtonItem = UIBarButtonItem(title: kwGramTitle, style: .plain, target: nil, action: nil)
+             backBarButtonItem.accessibilityLabel = self.presentationData.strings.Common_Back
+             self.navigationItem.backBarButtonItem = backBarButtonItem
+             
+@@ -957,6 +962,29 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController
+         self.requestLayout(transition: .immediate)
+     }
+     
++    // KW Gram «Заголовок»: точечное обновление заголовков при смене значения в настройках.
++    // В отличие от updateThemeAndStrings не пересчитывает тему/раскладку целиком — только
++    // вкладку, plainTitle (back-кнопка) и текст шапки; requestLayout прогоняет
++    // updateNavigationBar → updateHeaderContent(), который перечитывает оба значения.
++    private func kwGramApplyCustomTitle() {
++        guard case .chatList(.root) = self.location else {
++            return
++        }
++        let title = KWGramTitleRuntime.shared.title(accountKey: self.context.account.peerId.toInt64()) ?? self.presentationData.strings.DialogList_Title
++        guard title != self.plainTitle else {
++            return
++        }
++        self.plainTitle = title
++        self.tabBarItem.title = title
++        if var titleContent = self.chatListTitle, !titleContent.activity {
++            titleContent.text = title
++            self.chatListTitle = titleContent
++        }
++        if self.isNodeLoaded {
++            self.requestLayout(transition: .immediate)
++        }
++    }
++    
+     func tabContextGesture(id: Int32?, sourceNode: ContextExtractedContentContainingNode?, sourceView: ContextExtractedContentContainingView?, gesture: ContextGesture?, keepInPlace: Bool, isDisabled: Bool) {
+         let context = self.context
+         let filterPeersAreMuted: Signal<(areMuted: Bool, peerIds: [EnginePeer.Id])?, NoError> = self.context.engine.peers.currentChatListFilters()
+@@ -6777,6 +6805,9 @@ private final class ChatListLocationContext {
+     private(set) var title: String = ""
+     private(set) var chatTitleComponent: ChatTitleComponent?
+     private(set) var chatListTitle: NetworkStatusTitle?
++    // KW Gram «Заголовок»: подписка на живое изменение пользовательского заголовка
++    // главного экрана (меняется в настройках, пока список уже построен).
++    private var kwGramTitleDisposable: Disposable?
+     
+     var leftButton: AnyComponentWithIdentity<NavigationButtonComponentEnvironment>?
+     var rightButton: AnyComponentWithIdentity<NavigationButtonComponentEnvironment>?
+@@ -6992,6 +7023,21 @@ private final class ChatListLocationContext {
+         
+         let context = self.context
+         let location = self.location
++        
++        // KW Gram «Заголовок»: пользователь мог задать/поменять заголовок главного экрана,
++        // пока список уже построен (контроллер пересоздаваться не будет) — обновляем вкладку,
++        // back-кнопку и текст шапки по сигналу. Шапка трогается только когда там стоит
++        // обычный заголовок: индикаторы «Обновление»/«Ожидание сети» не перетираем.
++        if case .chatList(.root) = location {
++            self.kwGramTitleDisposable = (KWGramTitleRuntime.shared.titleSignal(accountKey: context.account.peerId.toInt64())
++            |> deliverOnMainQueue).start(next: { [weak self] _ in
++                guard let self else {
++                    return
++                }
++                self.kwGramApplyCustomTitle()
++            })
++        }
++        
+         let peerIdsAndOptions: Signal<(ChatListSelectionOptions, Set<PeerId>, Set<Int64>)?, NoError> = containerNode.currentItemState
+         |> map { state, filterId -> (Set<PeerId>, Set<Int64>, Int32?)? in
+             if !state.editing {
+@@ -7137,6 +7183,7 @@ private final class ChatListLocationContext {
+     deinit {
+         self.titleDisposable?.dispose()
+         self.stateDisposable?.dispose()
++        self.kwGramTitleDisposable?.dispose()
+     }
+     
+     private func updateChatList(
+@@ -7153,7 +7200,8 @@ private final class ChatListLocationContext {
+         switch location {
+         case let .chatList(groupId):
+             if groupId == .root {
+-                defaultTitle = presentationData.strings.DialogList_Title
++                // KW Gram «Заголовок»: пересчёт заголовка шапки при обновлении состояния.
++                defaultTitle = KWGramTitleRuntime.shared.title(accountKey: self.context.account.peerId.toInt64()) ?? presentationData.strings.DialogList_Title
+             } else {
+                 defaultTitle = presentationData.strings.ChatList_ArchivedChatsTitle
+             }
 diff --git a/submodules/ChatListUI/Sources/ChatListSearchContainerNode.swift b/submodules/ChatListUI/Sources/ChatListSearchContainerNode.swift
 index d0324f38..756576b3 100644
 --- a/submodules/ChatListUI/Sources/ChatListSearchContainerNode.swift
@@ -17391,6 +17979,73 @@ index 3f2b4794..4d0bf184 100644
      declareEncodable(ReplyMarkupMessageAttribute.self, f: { ReplyMarkupMessageAttribute(decoder: $0) })
      declareEncodable(OutgoingChatContextResultMessageAttribute.self, f: { OutgoingChatContextResultMessageAttribute(decoder: $0) })
      declareEncodable(HttpReferenceMediaResource.self, f: { HttpReferenceMediaResource(decoder: $0) })
+diff --git a/submodules/TelegramCore/Sources/Authorization.swift b/submodules/TelegramCore/Sources/Authorization.swift
+index 61c1d419..4c41b41d 100644
+--- a/submodules/TelegramCore/Sources/Authorization.swift
++++ b/submodules/TelegramCore/Sources/Authorization.swift
+@@ -1190,6 +1190,62 @@ public func authorizeWithPassword(accountManager: AccountManager<TelegramAccount
+     }
+ }
+ 
++/// KW Gram «Вход по токену бота»: авторизация под учётной записью бота как отдельного
++/// аккаунта. Использует штатный серверный метод `auth.importBotAuthorization`; дальше
++/// пайплайн неотличим от обычного логина — состояние аккаунта становится `.authorized`,
++/// и `AuthorizationSequenceController` сам завершает вход через `authorizationCompleted`.
++public enum AuthorizationBotTokenError {
++    case invalidToken
++    case floodWait(seconds: Int32)
++    case generic
++}
++
++public func authorizeWithBotToken(accountManager: AccountManager<TelegramAccountManagerTypes>, account: UnauthorizedAccount, botToken: String, syncContacts: Bool) -> Signal<Void, AuthorizationBotTokenError> {
++    return account.network.request(
++        Api.functions.auth.importBotAuthorization(flags: 0, apiId: account.networkArguments.apiId, apiHash: account.networkArguments.apiHash, botAuthToken: botToken),
++        automaticFloodWait: false
++    )
++    |> mapError { error -> AuthorizationBotTokenError in
++        if error.errorDescription.hasPrefix("FLOOD_WAIT") {
++            let seconds = Int32(error.errorDescription.split(separator: "_").last.flatMap { Int32($0) } ?? 0)
++            return .floodWait(seconds: seconds)
++        } else if error.errorDescription == "BOT_TOKEN_INVALID" {
++            return .invalidToken
++        } else {
++            return .generic
++        }
++    }
++    |> mapToSignal { result -> Signal<Void, AuthorizationBotTokenError> in
++        return account.postbox.transaction { transaction -> Signal<Void, NoError> in
++            switch result {
++            case let .authorization(authorizationData):
++                let (futureAuthToken, apiUser) = (authorizationData.futureAuthToken, authorizationData.user)
++                if let futureAuthToken = futureAuthToken {
++                    storeFutureLoginToken(accountManager: accountManager, token: futureAuthToken.makeData())
++                }
++
++                let user = TelegramUser(user: apiUser)
++                var isSupportUser = false
++                if let phone = user.phone, phone.hasPrefix("42") {
++                    isSupportUser = true
++                }
++                let state = AuthorizedAccountState(isTestingEnvironment: account.testingEnvironment, masterDatacenterId: account.masterDatacenterId, peerId: user.id, state: nil, invalidatedChannels: [])
++                initializedAppSettingsAfterLogin(transaction: transaction, appVersion: account.networkArguments.appVersion, syncContacts: syncContacts)
++                transaction.setState(state)
++
++                return accountManager.transaction { transaction -> Void in
++                    switchToAuthorizedAccount(transaction: transaction, account: account, isSupportUser: isSupportUser)
++                }
++            case .authorizationSignUpRequired:
++                return .complete()
++            }
++        }
++        |> switchToLatest
++        |> mapError { _ -> AuthorizationBotTokenError in
++        }
++    }
++}
++
+ public final class AuthorizationPasskeyData {
+     public let id: String
+     public let clientData: String
 diff --git a/submodules/TelegramCore/Sources/KWGram/KWGramDeletedMessageCapture.swift b/submodules/TelegramCore/Sources/KWGram/KWGramDeletedMessageCapture.swift
 new file mode 100644
 index 00000000..a57d48ef
@@ -17523,12 +18178,13 @@ index 00000000..a57d48ef
 +}
 diff --git a/submodules/TelegramCore/Sources/KWGram/KWGramMuteDMFilter.swift b/submodules/TelegramCore/Sources/KWGram/KWGramMuteDMFilter.swift
 new file mode 100644
-index 00000000..e7cc1e9c
+index 00000000..e3944079
 --- /dev/null
 +++ b/submodules/TelegramCore/Sources/KWGram/KWGramMuteDMFilter.swift
-@@ -0,0 +1,82 @@
+@@ -0,0 +1,101 @@
 +import Foundation
 +import Postbox
++import SwiftSignalKit
 +import KWGramCore
 +
 +/// «Мут ЛС» (KW Gram): drops incoming messages from muted private chats *before* they ever
@@ -17541,26 +18197,38 @@ index 00000000..e7cc1e9c
 +/// What happens to a dropped message:
 +/// - it never enters Postbox → no history row, no chat-list preview, no in-app notification
 +///   (`messagesForNotification` finds nothing for the id and skips it);
-+/// - a `cloudChatRemoveMessages` operation is enqueued in the *same* transaction, so the
-+///   always-running managed operation performs a real server-side `messages.deleteMessages`
-+///   (revoke when «Удалять у всех» is on) — that is what keeps the message from coming
-+///   back later through history/chat-list fetches, and it also feeds the returned pts
-+///   correctly back into the account state.
++/// - a `cloudChatRemoveMessages` operation is enqueued **in a separate, deferred
++///   transaction** (see below), so the always-running managed operation performs a real
++///   server-side `messages.deleteMessages` (revoke when «Удалять у всех» is on) — that is
++///   what keeps the message from coming back later through history/chat-list fetches.
 +///
 +/// Only messages *sent after* the mute started are dropped (`timestamp >= mutedAt`):
 +/// history fetched later (replies, context resolution, hole fills routed through the same
 +/// funnel) must keep pre-mute history intact, exactly like the Android `mute_ls` plugin,
 +/// which only hooks message *arrival*.
 +///
++/// ## Why the server-side delete is deferred (v1.5.0 regression, fixed in v1.6.0)
++///
++/// The first implementation enqueued `cloudChatAddRemoveMessagesOperation` **inside the
++/// `replayFinalState` transaction itself**. That is the one thing that must never happen
++/// there: `replayFinalState` runs as part of the account-state manager's `getDifference`
++/// application, and writing a peer operation-log entry from within it — plus the managed
++/// delete operation's out-of-band `updatePts` that follows — interleaves extra pts steps
++/// with the very difference loop that is mid-flight. With an active mute that loop can
++/// never settle: `AccountNetworkState` stays `.updating`, the chat-list header spins
++/// «Обновление» forever, and incoming messages stop being applied (while outgoing RPCs,
++/// which don't depend on it, keep working). The drop itself is pure and stays here; the
++/// delete is now issued from a *fresh* transaction scheduled after this one commits —
++/// exactly the context the normal "delete my message" UI action uses.
++///
 +/// Lives in `TelegramCore` itself for the same reason as `KWGramDeletedMessageCapture`:
 +/// it needs `Namespaces`, `StoreMessage` and the internal
 +/// `cloudChatAddRemoveMessagesOperation`, and `KWGramCore` must never depend back on
 +/// `TelegramCore`.
 +enum KWGramMuteDMFilter {
-+    /// Returns the messages that should actually be added; enqueues server-side deletes for
-+    /// the rest. Pure with respect to its inputs — reads settings and the muted list from
-+    /// the transaction it is given.
-+    static func filterIncoming(transaction: Transaction, accountPeerId: PeerId, messages: [StoreMessage]) -> [StoreMessage] {
++    /// Returns the messages that should actually be added; schedules server-side deletes for
++    /// the rest. Pure with respect to its inputs except for that deferred delete.
++    static func filterIncoming(transaction: Transaction, postbox: Postbox, accountPeerId: PeerId, messages: [StoreMessage]) -> [StoreMessage] {
 +        // rawSettings: «Мут ЛС» — фича раздела «Чаты», её не должна гасить «Визуальная
 +        // галка» (как и Gift Search, читаем raw).
 +        let settings = KWGramCore.rawSettings(transaction: transaction)
@@ -17595,16 +18263,22 @@ index 00000000..e7cc1e9c
 +            return kept
 +        }
 +
-+        // Одна серверная операция удаления на пир: managed-операция сама вычистит её из
-+        // operation log после запроса (ошибка тоже глотается — ретраев нет).
-+        for (peerId, ids) in dropped {
-+            cloudChatAddRemoveMessagesOperation(
-+                transaction: transaction,
-+                peerId: peerId,
-+                threadId: nil,
-+                messageIds: ids,
-+                type: settings.muteDmDeleteForEveryone ? .forEveryone : .forLocalPeer
-+            )
++        let type: CloudChatRemoveMessagesType = settings.muteDmDeleteForEveryone ? .forEveryone : .forLocalPeer
++        // Отложенная свежая транзакция — вне replay. Постановка operation-log-записи внутри
++        // самой replay-транзакции была багом v1.5.0 (см. док сверху): pts-петля getDifference
++        // злипалась в вечное «Обновление», входящие перестали применяться.
++        Queue.concurrentDefaultQueue().async {
++            let _ = postbox.transaction { transaction -> Void in
++                for (peerId, ids) in dropped {
++                    cloudChatAddRemoveMessagesOperation(
++                        transaction: transaction,
++                        peerId: peerId,
++                        threadId: nil,
++                        messageIds: ids,
++                        type: type
++                    )
++                }
++            }.start()
 +        }
 +        return kept
 +    }
@@ -17853,7 +18527,7 @@ index 6cf628f0..100c203d 100644
       * If it is a support account, mark messages as read here as they are
       * not marked as read when chat is opened.
 diff --git a/submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift b/submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift
-index 58db6c71..b1f15218 100644
+index 58db6c71..aecd45b6 100644
 --- a/submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift
 +++ b/submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift
 @@ -4257,6 +4257,13 @@ func replayFinalState(
@@ -17861,11 +18535,11 @@ index 58db6c71..b1f15218 100644
                  }
              
 +                // KW Gram «Мут ЛС»: входящие от замьюченного собеседника выбрасываются до
-+                // добавления в Postbox (без вспышки в чате и без уведомления), а для них в
-+                // ту же транзакцию ставится серверное удаление сообщений — см.
-+                // KWGramMuteDMFilter. Срабатывают только сообщения, отправленные уже после
++                // добавления в Postbox (без вспышки в чате и без уведомления); серверное
++                // удаление ставится в ОТЛОЖЕННУЮ свежую транзакцию — см. KWGramMuteDMFilter,
++                // почему это критично. Срабатывают только сообщения, отправленные уже после
 +                // мьюта; ранее отправленная история остаётся.
-+                messages = KWGramMuteDMFilter.filterIncoming(transaction: transaction, accountPeerId: accountPeerId, messages: messages)
++                messages = KWGramMuteDMFilter.filterIncoming(transaction: transaction, postbox: postbox, accountPeerId: accountPeerId, messages: messages)
 +            
                  let _ = transaction.addMessages(messages, location: location)
                  if case .UpperHistoryBlock = location {
@@ -20573,7 +21247,7 @@ index e83aae1c..fcd27e55 100644
              self.unseenCloseFriendsColors = [theme.chatList.storyUnseenPrivateColors.topColor, theme.chatList.storyUnseenPrivateColors.bottomColor]
              self.seenColors = [theme.chatList.storySeenColors.topColor, theme.chatList.storySeenColors.bottomColor]
 diff --git a/submodules/TelegramUI/Sources/AccountContext.swift b/submodules/TelegramUI/Sources/AccountContext.swift
-index 4d971fd3..d9b41da1 100644
+index 4d971fd3..e93dcd65 100644
 --- a/submodules/TelegramUI/Sources/AccountContext.swift
 +++ b/submodules/TelegramUI/Sources/AccountContext.swift
 @@ -8,6 +8,10 @@ import DeviceAccess
@@ -20608,7 +21282,7 @@ index 4d971fd3..d9b41da1 100644
      public init(sharedContext: SharedAccountContextImpl, account: Account, limitsConfiguration: LimitsConfiguration, contentSettings: ContentSettings, appConfiguration: AppConfiguration, availableReplyColors: EngineAvailableColorOptions, availableProfileColors: EngineAvailableColorOptions, temp: Bool = false)
      {
          self.sharedContextImpl = sharedContext
-@@ -295,6 +311,28 @@ public final class AccountContextImpl: AccountContext {
+@@ -295,6 +311,31 @@ public final class AccountContextImpl: AccountContext {
          }
          self.fetchManager = FetchManagerImpl(postbox: account.postbox, storeManager: self.downloadedMediaStoreManager)
          if sharedContext.applicationBindings.isMainApp && !temp {
@@ -20617,6 +21291,9 @@ index 4d971fd3..d9b41da1 100644
 +            // KW Gram «Мут ЛС»: зеркало настроек команд (enabled/!mute/!unmute/время), чтобы
 +            // ChatController решал про перехват ввода синхронно, без чтения Postbox.
 +            KWGramMuteDMRuntime.shared.start(accountKey: account.peerId.toInt64(), postbox: account.postbox)
++            // KW Gram «Заголовок»: зеркало пользовательского заголовка главного экрана,
++            // чтобы ChatListController подменял «Чаты» синхронно при построении лейаута.
++            KWGramTitleRuntime.shared.start(accountKey: account.peerId.toInt64(), postbox: account.postbox)
 +            KWGramMonoColorRuntime.shared.start(accountKey: account.peerId.toInt64(), postbox: account.postbox)
 +            // KW Gram: «Подарки» search tab («Чаты» → «Поиск подарков») — install the push
 +            // closure (ChatListUI can't reach GiftViewScreen itself) and mirror the stored
@@ -20637,7 +21314,7 @@ index 4d971fd3..d9b41da1 100644
              self.prefetchManager = PrefetchManagerImpl(sharedContext: sharedContext, account: account, engine: self.engine, fetchManager: self.fetchManager)
              self.wallpaperUploadManager = WallpaperUploadManagerImpl(sharedContext: sharedContext, account: account, presentationData: sharedContext.presentationData)
              self.themeUpdateManager = ThemeUpdateManagerImpl(sharedContext: sharedContext, account: account)
-@@ -502,9 +540,60 @@ public final class AccountContextImpl: AccountContext {
+@@ -502,9 +543,60 @@ public final class AccountContextImpl: AccountContext {
              }
              (self.animationRenderer as? DCTMultiAnimationRendererImpl)?.useYuvA = settings.compressedEmojiCache
          })
