@@ -18290,10 +18290,11 @@ index 00000000..e3944079
 +}
 diff --git a/submodules/TelegramCore/Sources/KWGram/KWGramStateDiagnostics.swift b/submodules/TelegramCore/Sources/KWGram/KWGramStateDiagnostics.swift
 new file mode 100644
-index 00000000..0ef6b5f7
+index 00000000..977125d9
 --- /dev/null
 +++ b/submodules/TelegramCore/Sources/KWGram/KWGramStateDiagnostics.swift
-@@ -0,0 +1,26 @@
+@@ -0,0 +1,47 @@
++import Foundation
 +import SwiftSignalKit
 +
 +/// Живой снимок ветвления `updates.getDifference`.
@@ -18307,8 +18308,22 @@ index 00000000..0ef6b5f7
 +/// Хранится ровно одно, последнее значение: порядок записей совпадает с порядком
 +/// достижения шагов, поэтому снимок всегда показывает, на каком шаге пайплайн сейчас
 +/// упирается.
++///
++/// В значение дополнительно включены порядковый номер записи и время — по одному
++/// статичному снимку нельзя отличить остановку пайплайна от быстрого цикла, который на
++/// каждом витке пишет ту же строку: номер перестаёт расти только в первом случае.
 +public enum KWGramStateDiagnostics {
 +    private static let promise = ValuePromise<String>("pollDifference ещё не запускался", ignoreRepeated: true)
++
++    private static let lock = NSLock()
++    private static var counter: Int = 0
++
++    private static let timeFormatter: DateFormatter = {
++        let formatter = DateFormatter()
++        formatter.locale = Locale(identifier: "en_US_POSIX")
++        formatter.dateFormat = "HH:mm:ss"
++        return formatter
++    }()
 +
 +    /// Текущее значение и все последующие — для живого вывода в интерфейсе.
 +    public static var signal: Signal<String, NoError> {
@@ -18317,7 +18332,13 @@ index 00000000..0ef6b5f7
 +
 +    /// Записать шаг, на котором сейчас находится пайплайн состояния аккаунта.
 +    public static func record(_ step: String) {
-+        promise.set(step)
++        lock.lock()
++        counter += 1
++        let number = counter
++        lock.unlock()
++
++        let time = timeFormatter.string(from: Date())
++        promise.set("#\(number) \(time) · \(step)")
 +    }
 +}
 diff --git a/submodules/TelegramCore/Sources/Network/FetchV2.swift b/submodules/TelegramCore/Sources/Network/FetchV2.swift
@@ -18628,7 +18649,7 @@ index 58db6c71..da674176 100644
                      addMessageThreadStatsDifference(threadKey: id, remove: remove, addedMessagePeer: nil, addedMessageId: nil, isOutgoing: false)
                  })
 diff --git a/submodules/TelegramCore/Sources/State/AccountStateManager.swift b/submodules/TelegramCore/Sources/State/AccountStateManager.swift
-index d4c91139..5c790e02 100644
+index d4c91139..79a2bc8a 100644
 --- a/submodules/TelegramCore/Sources/State/AccountStateManager.swift
 +++ b/submodules/TelegramCore/Sources/State/AccountStateManager.swift
 @@ -860,12 +860,14 @@ public final class AccountStateManager {
@@ -18646,8 +18667,21 @@ index d4c91139..5c790e02 100644
                                  return .fail(error)
                              }
                          }
-@@ -878,12 +880,14 @@ public final class AccountStateManager {
+@@ -874,16 +876,28 @@ public final class AccountStateManager {
+                         return request
+                         |> mapToSignal { difference -> Signal<(difference: Api.updates.Difference?, finalStatte: AccountReplayedFinalState?, skipBecauseOfError: Bool, resetState: Bool), NoError> in
+                             guard let difference = difference else {
++                                KWGramStateDiagnostics.record("ответ getDifference: nil → пропуск (AUTH_KEY_DUPLICATED)")
+                                 return .single((nil, nil, true, false))
                              }
++                            let differenceKind: String
++                            switch difference {
++                            case .differenceEmpty: differenceKind = "differenceEmpty"
++                            case .difference: differenceKind = "difference"
++                            case .differenceSlice: differenceKind = "differenceSlice"
++                            case .differenceTooLong: differenceKind = "differenceTooLong"
++                            }
++                            KWGramStateDiagnostics.record("ответ getDifference: \(differenceKind)")
                              switch difference {
                              case .differenceTooLong:
 +                                KWGramStateDiagnostics.record("differenceTooLong: состояние аккаунта будет сброшено")
@@ -18655,13 +18689,14 @@ index d4c91139..5c790e02 100644
                              default:
                                  return initialStateWithDifference(postbox: postbox, difference: difference)
                                  |> mapToSignal { state -> Signal<(difference: Api.updates.Difference?, finalStatte: AccountReplayedFinalState?, skipBecauseOfError: Bool, resetState: Bool), NoError> in
++                                    KWGramStateDiagnostics.record("initialStateWithDifference применён, сверяю состояние")
                                      if state.initialState.state != authorizedState {
                                          Logger.shared.log("State", "pollDifference initial state \(authorizedState) != current state \(state.initialState.state)")
 +                                        KWGramStateDiagnostics.record("расхождение состояния: было \(String(describing: authorizedState)), стало \(String(describing: state.initialState.state))")
                                          return .single((nil, nil, false, false))
                                      } else {
                                          return finalStateWithDifference(accountPeerId: accountPeerId, postbox: postbox, network: network, state: state, difference: difference, asyncResetChannels: disableParallelChannelReset ? nil : { peers in
-@@ -899,6 +903,7 @@ public final class AccountStateManager {
+@@ -899,6 +913,7 @@ public final class AccountStateManager {
                                                  }
                                              }
                                              let removePossiblyDeliveredMessagesUniqueIds = self?.removePossiblyDeliveredMessagesUniqueIds ?? Dictionary()
@@ -18669,7 +18704,7 @@ index d4c91139..5c790e02 100644
                                              return postbox.transaction { transaction -> (difference: Api.updates.Difference?, finalStatte: AccountReplayedFinalState?, skipBecauseOfError: Bool, resetState: Bool) in
                                                  let startTime = CFAbsoluteTimeGetCurrent()
                                                  let replayedState = replayFinalState(accountManager: accountManager, postbox: postbox, accountPeerId: accountPeerId, mediaBox: mediaBox, encryptionProvider: network.encryptionProvider, transaction: transaction, auxiliaryMethods: auxiliaryMethods, finalState: finalState, removePossiblyDeliveredMessagesUniqueIds: removePossiblyDeliveredMessagesUniqueIds, ignoreDate: false, skipVerification: false)
-@@ -924,6 +929,7 @@ public final class AccountStateManager {
+@@ -924,6 +939,7 @@ public final class AccountStateManager {
                              }
                          }
                      } else {
@@ -18677,7 +18712,27 @@ index d4c91139..5c790e02 100644
                          let appliedState = network.request(Api.functions.updates.getState())
                          |> retryRequest
                          |> mapToSignal { state in
-@@ -981,9 +987,11 @@ public final class AccountStateManager {
+@@ -948,6 +964,7 @@ public final class AccountStateManager {
+                         return
+                     }
+                     if resetState {
++                        KWGramStateDiagnostics.record("сброс состояния аккаунта (_internal_resetAccountState)")
+                         let _ = (_internal_resetAccountState(postbox: postbox, network: network, accountPeerId: accountPeerId)
+                         |> deliverOn(strongSelf.queue)).start(completed: {
+                             guard let strongSelf = self else {
+@@ -968,9 +985,11 @@ public final class AccountStateManager {
+                             if let difference = difference {
+                                 switch difference {
+                                 case .differenceSlice:
++                                    KWGramStateDiagnostics.record("differenceSlice → новая итерация getDifference")
+                                     strongSelf.addOperation(.pollDifference(strongSelf.getNextId(), events), position: .first)
+                                 default:
+                                     if let currentChannelOperationsContext = strongSelf.currentChannelOperationsContext {
++                                        KWGramStateDiagnostics.record("канальные операции: жду завершения перед сбросом флага обновления")
+                                         currentChannelOperationsContext.canComplete = true
+                                         currentChannelOperationsContext.events = currentChannelOperationsContext.events.union(with: events)
+                                         
+@@ -981,13 +1000,16 @@ public final class AccountStateManager {
                                          }
                                          strongSelf.currentIsUpdatingValue = false
                                          strongSelf.significantStateUpdateCompletedPipe.putNext(Void())
@@ -18686,6 +18741,11 @@ index d4c91139..5c790e02 100644
                                  }
                              } else if skipBecauseOfError {
 +                                KWGramStateDiagnostics.record("пропуск из-за ошибки: новая попытка не ставится, флаг обновления не сброшен")
+                                 if !events.isEmpty {
+                                     strongSelf.insertProcessEvents(events)
+                                 }
+                             } else {
++                                KWGramStateDiagnostics.record("применено частично → немедленная новая итерация getDifference")
                                  if !events.isEmpty {
                                      strongSelf.insertProcessEvents(events)
                                  }
