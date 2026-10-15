@@ -18288,6 +18288,38 @@ index 00000000..e3944079
 +        return kept
 +    }
 +}
+diff --git a/submodules/TelegramCore/Sources/KWGram/KWGramStateDiagnostics.swift b/submodules/TelegramCore/Sources/KWGram/KWGramStateDiagnostics.swift
+new file mode 100644
+index 00000000..b24f0d8e
+--- /dev/null
++++ b/submodules/TelegramCore/Sources/KWGram/KWGramStateDiagnostics.swift
+@@ -0,0 +1,26 @@
++import SwiftSignalKit
++
++/// Живой снимок ветвления `updates.getDifference`.
++///
++/// `AccountStateManager` в нескольких ветках не сбрасывает `currentIsUpdatingValue` и не
++/// применяет события вовсе: тогда шапка чат-листа навсегда показывает «Обновление...», а
++/// список остаётся пустым. Решения этих веток по умолчанию попадают только в
++/// `Logger.shared`, который с устройства прочитать нельзя, поэтому каждая ветка
++/// дублируется сюда.
++///
++/// Хранится ровно одно, последнее значение: порядок записей совпадает с порядком
++/// достижения шагов, поэтому снимок всегда показывает, на каком шаге пайплайн сейчас
++/// упирается.
++public enum KWGramStateDiagnostics {
++    private static let promise = Promise<String>("pollDifference ещё не запускался")
++
++    /// Текущее значение и все последующие — для живого вывода в интерфейсе.
++    public static var signal: Signal<String, NoError> {
++        return promise.get()
++    }
++
++    /// Записать шаг, на котором сейчас находится пайплайн состояния аккаунта.
++    public static func record(_ step: String) {
++        promise.set(step)
++    }
++}
 diff --git a/submodules/TelegramCore/Sources/Network/FetchV2.swift b/submodules/TelegramCore/Sources/Network/FetchV2.swift
 index 1075a48e..a34917cd 100644
 --- a/submodules/TelegramCore/Sources/Network/FetchV2.swift
@@ -18532,10 +18564,34 @@ index 6cf628f0..100c203d 100644
       * If it is a support account, mark messages as read here as they are
       * not marked as read when chat is opened.
 diff --git a/submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift b/submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift
-index 58db6c71..aecd45b6 100644
+index 58db6c71..da674176 100644
 --- a/submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift
 +++ b/submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift
-@@ -4257,6 +4257,13 @@ func replayFinalState(
+@@ -3746,6 +3746,7 @@ private func verifyTransaction(_ transaction: Transaction, finalState: AccountMu
+     
+     if !missingPeerIds.isEmpty {
+         Logger.shared.log("State", "missing peers \(missingPeerIds)")
++        KWGramStateDiagnostics.record("verify: отсутствуют пиров \(missingPeerIds)")
+         return false
+     }
+     
+@@ -3774,6 +3775,7 @@ private func verifyTransaction(_ transaction: Transaction, finalState: AccountMu
+         
+         if !previousStateMatches {
+             Logger.shared.log("State", ".UpdateState previous state \(previousState) doesn't match current state \(String(describing: currentState))")
++            KWGramStateDiagnostics.record("verify: UpdateState не совпал: было \(String(describing: previousState)), стало \(String(describing: currentState))")
+             failed = true
+         }
+     }
+@@ -3791,6 +3793,7 @@ private func verifyTransaction(_ transaction: Transaction, finalState: AccountMu
+         }
+         if !previousStateMatches {
+             Logger.shared.log("State", ".UpdateChannelState for \(peerId), previous state \(String(describing: previousState)) doesn't match current state \(String(describing: currentState))")
++            KWGramStateDiagnostics.record("verify: pts канала \(peerId) не совпал: было \(String(describing: previousState)), стало \(String(describing: currentState))")
+             failed = true
+         }
+     }
+@@ -4257,6 +4260,13 @@ func replayFinalState(
                      }
                  }
              
@@ -18549,7 +18605,7 @@ index 58db6c71..aecd45b6 100644
                  let _ = transaction.addMessages(messages, location: location)
                  if case .UpperHistoryBlock = location {
                      for message in messages {
-@@ -4440,6 +4447,11 @@ func replayFinalState(
+@@ -4440,6 +4450,11 @@ func replayFinalState(
                      }
                  }
              case let .DeleteMessagesWithGlobalIds(ids):
@@ -18561,7 +18617,7 @@ index 58db6c71..aecd45b6 100644
                  var resourceIds: [MediaResourceId] = []
                  transaction.deleteMessagesWithGlobalIds(ids, forEachMedia: { media in
                      addMessageMediaResourceIdsToRemove(media: media, resourceIds: &resourceIds)
-@@ -4449,6 +4461,9 @@ func replayFinalState(
+@@ -4449,6 +4464,9 @@ func replayFinalState(
                  }
                  deletedMessageIds.append(contentsOf: ids.map { .global($0) })
              case let .DeleteMessages(ids):
@@ -18571,6 +18627,68 @@ index 58db6c71..aecd45b6 100644
                  _internal_deleteMessages(transaction: transaction, mediaBox: mediaBox, ids: ids, manualAddMessageThreadStatsDifference: { id, add, remove in
                      addMessageThreadStatsDifference(threadKey: id, remove: remove, addedMessagePeer: nil, addedMessageId: nil, isOutgoing: false)
                  })
+diff --git a/submodules/TelegramCore/Sources/State/AccountStateManager.swift b/submodules/TelegramCore/Sources/State/AccountStateManager.swift
+index d4c91139..5c790e02 100644
+--- a/submodules/TelegramCore/Sources/State/AccountStateManager.swift
++++ b/submodules/TelegramCore/Sources/State/AccountStateManager.swift
+@@ -860,12 +860,14 @@ public final class AccountStateManager {
+                             }
+                         }
+                         
++                        KWGramStateDiagnostics.record("запрос getDifference: pts=\(authorizedState.pts), qts=\(authorizedState.qts), date=\(authorizedState.date)")
+                         let request = network.request(Api.functions.updates.getDifference(flags: flags, pts: authorizedState.pts, ptsLimit: nil, ptsTotalLimit: ptsTotalLimit, date: authorizedState.date, qts: authorizedState.qts, qtsLimit: nil))
+                         |> map(Optional.init)
+                         |> `catch` { error -> Signal<Api.updates.Difference?, MTRpcError> in
+                             if error.errorCode == 406 && error.errorDescription == "AUTH_KEY_DUPLICATED" {
+                                 return .single(nil)
+                             } else {
++                                KWGramStateDiagnostics.record("ошибка RPC \(error.errorCode): \(error.errorDescription ?? "без описания")")
+                                 return .fail(error)
+                             }
+                         }
+@@ -878,12 +880,14 @@ public final class AccountStateManager {
+                             }
+                             switch difference {
+                             case .differenceTooLong:
++                                KWGramStateDiagnostics.record("differenceTooLong: состояние аккаунта будет сброшено")
+                                 return .single((nil, nil, false, true))
+                             default:
+                                 return initialStateWithDifference(postbox: postbox, difference: difference)
+                                 |> mapToSignal { state -> Signal<(difference: Api.updates.Difference?, finalStatte: AccountReplayedFinalState?, skipBecauseOfError: Bool, resetState: Bool), NoError> in
+                                     if state.initialState.state != authorizedState {
+                                         Logger.shared.log("State", "pollDifference initial state \(authorizedState) != current state \(state.initialState.state)")
++                                        KWGramStateDiagnostics.record("расхождение состояния: было \(String(describing: authorizedState)), стало \(String(describing: state.initialState.state))")
+                                         return .single((nil, nil, false, false))
+                                     } else {
+                                         return finalStateWithDifference(accountPeerId: accountPeerId, postbox: postbox, network: network, state: state, difference: difference, asyncResetChannels: disableParallelChannelReset ? nil : { peers in
+@@ -899,6 +903,7 @@ public final class AccountStateManager {
+                                                 }
+                                             }
+                                             let removePossiblyDeliveredMessagesUniqueIds = self?.removePossiblyDeliveredMessagesUniqueIds ?? Dictionary()
++                                            KWGramStateDiagnostics.record("replay: применение difference")
+                                             return postbox.transaction { transaction -> (difference: Api.updates.Difference?, finalStatte: AccountReplayedFinalState?, skipBecauseOfError: Bool, resetState: Bool) in
+                                                 let startTime = CFAbsoluteTimeGetCurrent()
+                                                 let replayedState = replayFinalState(accountManager: accountManager, postbox: postbox, accountPeerId: accountPeerId, mediaBox: mediaBox, encryptionProvider: network.encryptionProvider, transaction: transaction, auxiliaryMethods: auxiliaryMethods, finalState: finalState, removePossiblyDeliveredMessagesUniqueIds: removePossiblyDeliveredMessagesUniqueIds, ignoreDate: false, skipVerification: false)
+@@ -924,6 +929,7 @@ public final class AccountStateManager {
+                             }
+                         }
+                     } else {
++                        KWGramStateDiagnostics.record("состояние аккаунта пустое → updates.getState")
+                         let appliedState = network.request(Api.functions.updates.getState())
+                         |> retryRequest
+                         |> mapToSignal { state in
+@@ -981,9 +987,11 @@ public final class AccountStateManager {
+                                         }
+                                         strongSelf.currentIsUpdatingValue = false
+                                         strongSelf.significantStateUpdateCompletedPipe.putNext(Void())
++                                        KWGramStateDiagnostics.record("OK: difference применён, обновление завершено")
+                                     }
+                                 }
+                             } else if skipBecauseOfError {
++                                KWGramStateDiagnostics.record("пропуск из-за ошибки: новая попытка не ставится, флаг обновления не сброшен")
+                                 if !events.isEmpty {
+                                     strongSelf.insertProcessEvents(events)
+                                 }
 diff --git a/submodules/TelegramCore/Sources/State/KWGramGhostHelpers.swift b/submodules/TelegramCore/Sources/State/KWGramGhostHelpers.swift
 new file mode 100644
 index 00000000..5c272a73
