@@ -18290,7 +18290,7 @@ index 00000000..e3944079
 +}
 diff --git a/submodules/TelegramCore/Sources/KWGram/KWGramStateDiagnostics.swift b/submodules/TelegramCore/Sources/KWGram/KWGramStateDiagnostics.swift
 new file mode 100644
-index 00000000..b24f0d8e
+index 00000000..0ef6b5f7
 --- /dev/null
 +++ b/submodules/TelegramCore/Sources/KWGram/KWGramStateDiagnostics.swift
 @@ -0,0 +1,26 @@
@@ -18308,7 +18308,7 @@ index 00000000..b24f0d8e
 +/// достижения шагов, поэтому снимок всегда показывает, на каком шаге пайплайн сейчас
 +/// упирается.
 +public enum KWGramStateDiagnostics {
-+    private static let promise = Promise<String>("pollDifference ещё не запускался")
++    private static let promise = ValuePromise<String>("pollDifference ещё не запускался", ignoreRepeated: true)
 +
 +    /// Текущее значение и все последующие — для живого вывода в интерфейсе.
 +    public static var signal: Signal<String, NoError> {
