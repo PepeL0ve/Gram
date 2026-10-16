@@ -18585,7 +18585,7 @@ index 6cf628f0..100c203d 100644
       * If it is a support account, mark messages as read here as they are
       * not marked as read when chat is opened.
 diff --git a/submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift b/submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift
-index 58db6c71..2b939ff3 100644
+index 58db6c71..0a4d3bae 100644
 --- a/submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift
 +++ b/submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift
 @@ -708,6 +708,7 @@ func finalStateWithUpdateGroups(accountPeerId: PeerId, postbox: Postbox, network
@@ -18650,28 +18650,54 @@ index 58db6c71..2b939ff3 100644
                      return resolveMissingPeerChatInfos(accountPeerId: accountPeerId, network: network, state: resultingState)
                      |> map { resultingState, resolveError -> AccountFinalState in
                          return AccountFinalState(state: resultingState, shouldPoll: shouldPoll || hadError || resolveError, incomplete: missingUpdates, missingUpdatesFromChannels: Set(), discard: resolveError)
-@@ -2988,14 +3008,19 @@ private func resolveMissingPeerChatInfos(accountPeerId: PeerId, network: Network
+@@ -2988,14 +3008,45 @@ private func resolveMissingPeerChatInfos(accountPeerId: PeerId, network: Network
          return .single((state, hadError))
      } else {
          Logger.shared.log("State", "will fetch chat info for \(missingPeers.count) peers")
 -        let signal = network.request(Api.functions.messages.getPeerDialogs(peers: Array(missingPeers.values)))
 +        KWGramStateDiagnostics.record("getPeerDialogs: отправляю \(missingPeers.count) пиров")
-+        let signal = network.request(Api.functions.messages.getPeerDialogs(peers: Array(missingPeers.values)), onFloodWaitError: { text in
++        let signal = network.requestWithAdditionalInfo(Api.functions.messages.getPeerDialogs(peers: Array(missingPeers.values)), info: [.acknowledgement, .progress], onFloodWaitError: { text in
 +            KWGramStateDiagnostics.record("getPeerDialogs: FLOOD_WAIT \(text)")
 +        })
++        |> mapToSignal { result -> Signal<Api.messages.PeerDialogs?, MTRpcError> in
++            switch result {
++                case .acknowledged:
++                    KWGramStateDiagnostics.record("getPeerDialogs: сервер подтвердил приём (ACK)")
++                    return .complete()
++                case .progress:
++                    return .complete()
++                case let .result(value):
++                    return .single(value)
++            }
++        }
          |> map(Optional.init)
          
++        // A wedged RPC must not be able to hold the whole update cycle open forever: the flag
++        // that keeps the header on "Обновление..." is only cleared once this signal emits, so an
++        // unanswered request would leave the chat list empty indefinitely. After the deadline we
++        // proceed without the peer chat infos rather than stall; the state still applies and a
++        // later poll retries.
++        let timeoutSignal: Signal<Api.messages.PeerDialogs?, NoError> = Signal { subscriber in
++            KWGramStateDiagnostics.record("getPeerDialogs: таймаут 30 с — продолжаю без chat infos")
++            subscriber.putNext(nil)
++            subscriber.putCompletion()
++            return EmptyDisposable
++        }
++        
          return signal
          |> `catch` { _ -> Signal<Api.messages.PeerDialogs?, NoError> in
 +            KWGramStateDiagnostics.record("getPeerDialogs: ошибка RPC, продолжаю без chat infos")
              return .single(nil)
          }
++        |> timeout(30.0, queue: Queue.mainQueue(), alternate: timeoutSignal)
          |> map { result -> (AccountMutableState, Bool) in
-+            KWGramStateDiagnostics.record("getPeerDialogs: ответ получен")
++            if result != nil {
++                KWGramStateDiagnostics.record("getPeerDialogs: ответ получен")
++            }
              guard let result = result else {
                  return (state, hadError)
              }
-@@ -3746,6 +3771,7 @@ private func verifyTransaction(_ transaction: Transaction, finalState: AccountMu
+@@ -3746,6 +3797,7 @@ private func verifyTransaction(_ transaction: Transaction, finalState: AccountMu
      
      if !missingPeerIds.isEmpty {
          Logger.shared.log("State", "missing peers \(missingPeerIds)")
@@ -18679,7 +18705,7 @@ index 58db6c71..2b939ff3 100644
          return false
      }
      
-@@ -3774,6 +3800,7 @@ private func verifyTransaction(_ transaction: Transaction, finalState: AccountMu
+@@ -3774,6 +3826,7 @@ private func verifyTransaction(_ transaction: Transaction, finalState: AccountMu
          
          if !previousStateMatches {
              Logger.shared.log("State", ".UpdateState previous state \(previousState) doesn't match current state \(String(describing: currentState))")
@@ -18687,7 +18713,7 @@ index 58db6c71..2b939ff3 100644
              failed = true
          }
      }
-@@ -3791,6 +3818,7 @@ private func verifyTransaction(_ transaction: Transaction, finalState: AccountMu
+@@ -3791,6 +3844,7 @@ private func verifyTransaction(_ transaction: Transaction, finalState: AccountMu
          }
          if !previousStateMatches {
              Logger.shared.log("State", ".UpdateChannelState for \(peerId), previous state \(String(describing: previousState)) doesn't match current state \(String(describing: currentState))")
@@ -18695,7 +18721,7 @@ index 58db6c71..2b939ff3 100644
              failed = true
          }
      }
-@@ -4257,6 +4285,13 @@ func replayFinalState(
+@@ -4257,6 +4311,13 @@ func replayFinalState(
                      }
                  }
              
@@ -18709,7 +18735,7 @@ index 58db6c71..2b939ff3 100644
                  let _ = transaction.addMessages(messages, location: location)
                  if case .UpperHistoryBlock = location {
                      for message in messages {
-@@ -4440,6 +4475,11 @@ func replayFinalState(
+@@ -4440,6 +4501,11 @@ func replayFinalState(
                      }
                  }
              case let .DeleteMessagesWithGlobalIds(ids):
@@ -18721,7 +18747,7 @@ index 58db6c71..2b939ff3 100644
                  var resourceIds: [MediaResourceId] = []
                  transaction.deleteMessagesWithGlobalIds(ids, forEachMedia: { media in
                      addMessageMediaResourceIdsToRemove(media: media, resourceIds: &resourceIds)
-@@ -4449,6 +4489,9 @@ func replayFinalState(
+@@ -4449,6 +4515,9 @@ func replayFinalState(
                  }
                  deletedMessageIds.append(contentsOf: ids.map { .global($0) })
              case let .DeleteMessages(ids):
