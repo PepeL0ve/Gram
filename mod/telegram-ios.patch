@@ -18290,10 +18290,10 @@ index 00000000..e3944079
 +}
 diff --git a/submodules/TelegramCore/Sources/KWGram/KWGramStateDiagnostics.swift b/submodules/TelegramCore/Sources/KWGram/KWGramStateDiagnostics.swift
 new file mode 100644
-index 00000000..977125d9
+index 00000000..17b6b2e0
 --- /dev/null
 +++ b/submodules/TelegramCore/Sources/KWGram/KWGramStateDiagnostics.swift
-@@ -0,0 +1,47 @@
+@@ -0,0 +1,60 @@
 +import Foundation
 +import SwiftSignalKit
 +
@@ -18305,18 +18305,26 @@ index 00000000..977125d9
 +/// `Logger.shared`, который с устройства прочитать нельзя, поэтому каждая ветка
 +/// дублируется сюда.
 +///
-+/// Хранится ровно одно, последнее значение: порядок записей совпадает с порядком
-+/// достижения шагов, поэтому снимок всегда показывает, на каком шаге пайплайн сейчас
-+/// упирается.
++/// Хранится история последних записей, а не только последняя. Пайплайн, который не
++/// останавливается, а крутится в цикле, на каждом витке пишет почти одни и те же строки,
++/// и по одной записи такой цикл неотличим от честного ожидания: в обоих случаях видна
++/// одна и та же стадия. История показывает структуру витка — какой веткой он каждый раз
++/// замыкается (`differenceSlice`, немедленная переопроска, пропуск по ошибке), а по
++/// отсутствию новых записей в ней читается и настоящая остановка.
 +///
-+/// В значение дополнительно включены порядковый номер записи и время — по одному
-+/// статичному снимку нельзя отличить остановку пайплайна от быстрого цикла, который на
-+/// каждом витке пишет ту же строку: номер перестаёт расти только в первом случае.
++/// В каждую запись включены порядковый номер и время. Номер растёт непрерывно, поэтому
++/// даже по одному статичному снимку видно, двигался ли пайплайн после последней записи,
++/// показанной в предыдущем снимке.
 +public enum KWGramStateDiagnostics {
 +    private static let promise = ValuePromise<String>("pollDifference ещё не запускался", ignoreRepeated: true)
 +
 +    private static let lock = NSLock()
 +    private static var counter: Int = 0
++    private static var history: [String] = []
++
++    /// Сколько последних записей держать. Хватает, чтобы разглядеть полный виток цикла:
++    /// проход через `finalStateWithDifference` даёт около полутора десятков записей.
++    private static let historyDepth = 14
 +
 +    private static let timeFormatter: DateFormatter = {
 +        let formatter = DateFormatter()
@@ -18332,13 +18340,18 @@ index 00000000..977125d9
 +
 +    /// Записать шаг, на котором сейчас находится пайплайн состояния аккаунта.
 +    public static func record(_ step: String) {
++        // Всё под замком, включая форматирование времени: `DateFormatter` не потокобезопасен,
++        // а записи приходят с postbox-, сетевой- и главной очередей одновременно.
 +        lock.lock()
 +        counter += 1
-+        let number = counter
++        history.append("#\(counter) \(timeFormatter.string(from: Date())) · \(step)")
++        if history.count > historyDepth {
++            history.removeFirst(history.count - historyDepth)
++        }
++        let text = history.joined(separator: "\n")
 +        lock.unlock()
 +
-+        let time = timeFormatter.string(from: Date())
-+        promise.set("#\(number) \(time) · \(step)")
++        promise.set(text)
 +    }
 +}
 diff --git a/submodules/TelegramCore/Sources/Network/FetchV2.swift b/submodules/TelegramCore/Sources/Network/FetchV2.swift
