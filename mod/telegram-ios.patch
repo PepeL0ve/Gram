@@ -18585,10 +18585,72 @@ index 6cf628f0..100c203d 100644
       * If it is a support account, mark messages as read here as they are
       * not marked as read when chat is opened.
 diff --git a/submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift b/submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift
-index 58db6c71..da674176 100644
+index 58db6c71..3c3386bd 100644
 --- a/submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift
 +++ b/submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift
-@@ -3746,6 +3746,7 @@ private func verifyTransaction(_ transaction: Transaction, finalState: AccountMu
+@@ -708,6 +708,7 @@ func finalStateWithUpdateGroups(accountPeerId: PeerId, postbox: Postbox, network
+ func finalStateWithDifference(accountPeerId: PeerId, postbox: Postbox, network: Network, state: AccountMutableState, difference: Api.updates.Difference, asyncResetChannels: (([(peer: Peer, pts: Int32?)]) -> Void)?) -> Signal<AccountFinalState, NoError> {
+     var updatedState = state
+     
++    KWGramStateDiagnostics.record("finalState: разбираю difference, строю финальное состояние")
+     var messages: [Api.Message] = []
+     var encryptedMessages: [Api.EncryptedMessage] = []
+     var updates: [Api.Update] = []
+@@ -915,6 +916,7 @@ private func sortedUpdates(_ updates: [Api.Update]) -> [Api.Update] {
+ }
+ 
+ private func finalStateWithUpdates(accountPeerId: PeerId, postbox: Postbox, network: Network, state: AccountMutableState, updates: [Api.Update], shouldPoll: Bool, missingUpdates: Bool, shouldResetChannels: Bool, updatesDate: Int32?, asyncResetChannels: (([(peer: Peer, pts: Int32?)]) -> Void)?) -> Signal<AccountFinalState, NoError> {
++    KWGramStateDiagnostics.record("finalState: запрашиваю globalTime (очередь MTProto)")
+     return network.currentGlobalTime
+     |> take(1)
+     |> mapToSignal { serverTime -> Signal<AccountFinalState, NoError> in
+@@ -926,6 +928,7 @@ private func finalStateWithUpdatesAndServerTime(accountPeerId: PeerId, postbox:
+     var updatedState = state
+     
+     var channelsToPoll: [PeerId: Int32?] = [:]
++    KWGramStateDiagnostics.record("finalState: разбираю обновления (чистый CPU)")
+     
+     if !updatedState.initialState.channelsToPollExplicitely.isEmpty {
+         for peerId in updatedState.initialState.channelsToPollExplicitely {
+@@ -2082,8 +2085,10 @@ private func finalStateWithUpdatesAndServerTime(accountPeerId: PeerId, postbox:
+         }
+     }
+     
++    KWGramStateDiagnostics.record("finalState: каналов к опросу \(pollChannelSignals.count), combineLatest")
+     return combineLatest(pollChannelSignals)
+     |> mapToSignal { states -> Signal<AccountFinalState, NoError> in
++        KWGramStateDiagnostics.record("finalState: каналы завершены (\(states.count))")
+         var finalState: AccountMutableState = updatedState
+         var hadError = false
+         
+@@ -2100,11 +2105,26 @@ private func finalStateWithUpdatesAndServerTime(accountPeerId: PeerId, postbox:
+         }
+         
+         return resolveForumThreads(accountPeerId: accountPeerId, postbox: postbox, source: .network(network), state: finalState)
++        |> map { state -> AccountMutableState in
++            KWGramStateDiagnostics.record("finalState: resolveForumThreads завершён")
++            return state
++        }
+         |> mapToSignal { finalState in
++            KWGramStateDiagnostics.record("finalState: resolveAssociatedMessages (запросы getMessages)")
+             return resolveAssociatedMessages(accountPeerId: accountPeerId, postbox: postbox, network: network, state: finalState)
++            |> map { state -> AccountMutableState in
++                KWGramStateDiagnostics.record("finalState: resolveAssociatedMessages завершён")
++                return state
++            }
+             |> mapToSignal { resultingState -> Signal<AccountFinalState, NoError> in
++                KWGramStateDiagnostics.record("finalState: resolveAssociatedStories (запросы историй)")
+                 return resolveAssociatedStories(postbox: postbox, network: network, accountPeerId: accountPeerId, state: resultingState)
++                |> map { state -> AccountMutableState in
++                    KWGramStateDiagnostics.record("finalState: resolveAssociatedStories завершён")
++                    return state
++                }
+                 |> mapToSignal { resultingState -> Signal<AccountFinalState, NoError> in
++                    KWGramStateDiagnostics.record("finalState: resolveMissingPeerChatInfos (запрос getPeerDialogs)")
+                     return resolveMissingPeerChatInfos(accountPeerId: accountPeerId, network: network, state: resultingState)
+                     |> map { resultingState, resolveError -> AccountFinalState in
+                         return AccountFinalState(state: resultingState, shouldPoll: shouldPoll || hadError || resolveError, incomplete: missingUpdates, missingUpdatesFromChannels: Set(), discard: resolveError)
+@@ -3746,6 +3766,7 @@ private func verifyTransaction(_ transaction: Transaction, finalState: AccountMu
      
      if !missingPeerIds.isEmpty {
          Logger.shared.log("State", "missing peers \(missingPeerIds)")
@@ -18596,7 +18658,7 @@ index 58db6c71..da674176 100644
          return false
      }
      
-@@ -3774,6 +3775,7 @@ private func verifyTransaction(_ transaction: Transaction, finalState: AccountMu
+@@ -3774,6 +3795,7 @@ private func verifyTransaction(_ transaction: Transaction, finalState: AccountMu
          
          if !previousStateMatches {
              Logger.shared.log("State", ".UpdateState previous state \(previousState) doesn't match current state \(String(describing: currentState))")
@@ -18604,7 +18666,7 @@ index 58db6c71..da674176 100644
              failed = true
          }
      }
-@@ -3791,6 +3793,7 @@ private func verifyTransaction(_ transaction: Transaction, finalState: AccountMu
+@@ -3791,6 +3813,7 @@ private func verifyTransaction(_ transaction: Transaction, finalState: AccountMu
          }
          if !previousStateMatches {
              Logger.shared.log("State", ".UpdateChannelState for \(peerId), previous state \(String(describing: previousState)) doesn't match current state \(String(describing: currentState))")
@@ -18612,7 +18674,7 @@ index 58db6c71..da674176 100644
              failed = true
          }
      }
-@@ -4257,6 +4260,13 @@ func replayFinalState(
+@@ -4257,6 +4280,13 @@ func replayFinalState(
                      }
                  }
              
@@ -18626,7 +18688,7 @@ index 58db6c71..da674176 100644
                  let _ = transaction.addMessages(messages, location: location)
                  if case .UpperHistoryBlock = location {
                      for message in messages {
-@@ -4440,6 +4450,11 @@ func replayFinalState(
+@@ -4440,6 +4470,11 @@ func replayFinalState(
                      }
                  }
              case let .DeleteMessagesWithGlobalIds(ids):
@@ -18638,7 +18700,7 @@ index 58db6c71..da674176 100644
                  var resourceIds: [MediaResourceId] = []
                  transaction.deleteMessagesWithGlobalIds(ids, forEachMedia: { media in
                      addMessageMediaResourceIdsToRemove(media: media, resourceIds: &resourceIds)
-@@ -4449,6 +4464,9 @@ func replayFinalState(
+@@ -4449,6 +4484,9 @@ func replayFinalState(
                  }
                  deletedMessageIds.append(contentsOf: ids.map { .global($0) })
              case let .DeleteMessages(ids):
