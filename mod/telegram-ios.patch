@@ -18585,7 +18585,7 @@ index 6cf628f0..100c203d 100644
       * If it is a support account, mark messages as read here as they are
       * not marked as read when chat is opened.
 diff --git a/submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift b/submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift
-index 58db6c71..3c3386bd 100644
+index 58db6c71..2b939ff3 100644
 --- a/submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift
 +++ b/submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift
 @@ -708,6 +708,7 @@ func finalStateWithUpdateGroups(accountPeerId: PeerId, postbox: Postbox, network
@@ -18650,7 +18650,28 @@ index 58db6c71..3c3386bd 100644
                      return resolveMissingPeerChatInfos(accountPeerId: accountPeerId, network: network, state: resultingState)
                      |> map { resultingState, resolveError -> AccountFinalState in
                          return AccountFinalState(state: resultingState, shouldPoll: shouldPoll || hadError || resolveError, incomplete: missingUpdates, missingUpdatesFromChannels: Set(), discard: resolveError)
-@@ -3746,6 +3766,7 @@ private func verifyTransaction(_ transaction: Transaction, finalState: AccountMu
+@@ -2988,14 +3008,19 @@ private func resolveMissingPeerChatInfos(accountPeerId: PeerId, network: Network
+         return .single((state, hadError))
+     } else {
+         Logger.shared.log("State", "will fetch chat info for \(missingPeers.count) peers")
+-        let signal = network.request(Api.functions.messages.getPeerDialogs(peers: Array(missingPeers.values)))
++        KWGramStateDiagnostics.record("getPeerDialogs: отправляю \(missingPeers.count) пиров")
++        let signal = network.request(Api.functions.messages.getPeerDialogs(peers: Array(missingPeers.values)), onFloodWaitError: { text in
++            KWGramStateDiagnostics.record("getPeerDialogs: FLOOD_WAIT \(text)")
++        })
+         |> map(Optional.init)
+         
+         return signal
+         |> `catch` { _ -> Signal<Api.messages.PeerDialogs?, NoError> in
++            KWGramStateDiagnostics.record("getPeerDialogs: ошибка RPC, продолжаю без chat infos")
+             return .single(nil)
+         }
+         |> map { result -> (AccountMutableState, Bool) in
++            KWGramStateDiagnostics.record("getPeerDialogs: ответ получен")
+             guard let result = result else {
+                 return (state, hadError)
+             }
+@@ -3746,6 +3771,7 @@ private func verifyTransaction(_ transaction: Transaction, finalState: AccountMu
      
      if !missingPeerIds.isEmpty {
          Logger.shared.log("State", "missing peers \(missingPeerIds)")
@@ -18658,7 +18679,7 @@ index 58db6c71..3c3386bd 100644
          return false
      }
      
-@@ -3774,6 +3795,7 @@ private func verifyTransaction(_ transaction: Transaction, finalState: AccountMu
+@@ -3774,6 +3800,7 @@ private func verifyTransaction(_ transaction: Transaction, finalState: AccountMu
          
          if !previousStateMatches {
              Logger.shared.log("State", ".UpdateState previous state \(previousState) doesn't match current state \(String(describing: currentState))")
@@ -18666,7 +18687,7 @@ index 58db6c71..3c3386bd 100644
              failed = true
          }
      }
-@@ -3791,6 +3813,7 @@ private func verifyTransaction(_ transaction: Transaction, finalState: AccountMu
+@@ -3791,6 +3818,7 @@ private func verifyTransaction(_ transaction: Transaction, finalState: AccountMu
          }
          if !previousStateMatches {
              Logger.shared.log("State", ".UpdateChannelState for \(peerId), previous state \(String(describing: previousState)) doesn't match current state \(String(describing: currentState))")
@@ -18674,7 +18695,7 @@ index 58db6c71..3c3386bd 100644
              failed = true
          }
      }
-@@ -4257,6 +4280,13 @@ func replayFinalState(
+@@ -4257,6 +4285,13 @@ func replayFinalState(
                      }
                  }
              
@@ -18688,7 +18709,7 @@ index 58db6c71..3c3386bd 100644
                  let _ = transaction.addMessages(messages, location: location)
                  if case .UpperHistoryBlock = location {
                      for message in messages {
-@@ -4440,6 +4470,11 @@ func replayFinalState(
+@@ -4440,6 +4475,11 @@ func replayFinalState(
                      }
                  }
              case let .DeleteMessagesWithGlobalIds(ids):
@@ -18700,7 +18721,7 @@ index 58db6c71..3c3386bd 100644
                  var resourceIds: [MediaResourceId] = []
                  transaction.deleteMessagesWithGlobalIds(ids, forEachMedia: { media in
                      addMessageMediaResourceIdsToRemove(media: media, resourceIds: &resourceIds)
-@@ -4449,6 +4484,9 @@ func replayFinalState(
+@@ -4449,6 +4489,9 @@ func replayFinalState(
                  }
                  deletedMessageIds.append(contentsOf: ids.map { .global($0) })
              case let .DeleteMessages(ids):
@@ -18711,7 +18732,7 @@ index 58db6c71..3c3386bd 100644
                      addMessageThreadStatsDifference(threadKey: id, remove: remove, addedMessagePeer: nil, addedMessageId: nil, isOutgoing: false)
                  })
 diff --git a/submodules/TelegramCore/Sources/State/AccountStateManager.swift b/submodules/TelegramCore/Sources/State/AccountStateManager.swift
-index d4c91139..79a2bc8a 100644
+index d4c91139..b3f972a1 100644
 --- a/submodules/TelegramCore/Sources/State/AccountStateManager.swift
 +++ b/submodules/TelegramCore/Sources/State/AccountStateManager.swift
 @@ -860,12 +860,14 @@ public final class AccountStateManager {
@@ -18758,7 +18779,18 @@ index d4c91139..79a2bc8a 100644
                                          return .single((nil, nil, false, false))
                                      } else {
                                          return finalStateWithDifference(accountPeerId: accountPeerId, postbox: postbox, network: network, state: state, difference: difference, asyncResetChannels: disableParallelChannelReset ? nil : { peers in
-@@ -899,6 +913,7 @@ public final class AccountStateManager {
+@@ -891,6 +905,10 @@ public final class AccountStateManager {
+                                                 self?.addAsyncResetChannels(peers: peers)
+                                             }
+                                         })
++                                        |> map { finalState -> AccountFinalState in
++                                            KWGramStateDiagnostics.record("finalStateWithDifference готов, доставляю на очередь")
++                                            return finalState
++                                        }
+                                         |> deliverOn(queue)
+                                         |> mapToSignal { finalState -> Signal<(difference: Api.updates.Difference?, finalStatte: AccountReplayedFinalState?, skipBecauseOfError: Bool, resetState: Bool), NoError> in
+                                             if !finalState.state.preCachedResources.isEmpty {
+@@ -899,6 +917,7 @@ public final class AccountStateManager {
                                                  }
                                              }
                                              let removePossiblyDeliveredMessagesUniqueIds = self?.removePossiblyDeliveredMessagesUniqueIds ?? Dictionary()
@@ -18766,7 +18798,7 @@ index d4c91139..79a2bc8a 100644
                                              return postbox.transaction { transaction -> (difference: Api.updates.Difference?, finalStatte: AccountReplayedFinalState?, skipBecauseOfError: Bool, resetState: Bool) in
                                                  let startTime = CFAbsoluteTimeGetCurrent()
                                                  let replayedState = replayFinalState(accountManager: accountManager, postbox: postbox, accountPeerId: accountPeerId, mediaBox: mediaBox, encryptionProvider: network.encryptionProvider, transaction: transaction, auxiliaryMethods: auxiliaryMethods, finalState: finalState, removePossiblyDeliveredMessagesUniqueIds: removePossiblyDeliveredMessagesUniqueIds, ignoreDate: false, skipVerification: false)
-@@ -924,6 +939,7 @@ public final class AccountStateManager {
+@@ -924,6 +943,7 @@ public final class AccountStateManager {
                              }
                          }
                      } else {
@@ -18774,7 +18806,7 @@ index d4c91139..79a2bc8a 100644
                          let appliedState = network.request(Api.functions.updates.getState())
                          |> retryRequest
                          |> mapToSignal { state in
-@@ -948,6 +964,7 @@ public final class AccountStateManager {
+@@ -948,6 +968,7 @@ public final class AccountStateManager {
                          return
                      }
                      if resetState {
@@ -18782,7 +18814,7 @@ index d4c91139..79a2bc8a 100644
                          let _ = (_internal_resetAccountState(postbox: postbox, network: network, accountPeerId: accountPeerId)
                          |> deliverOn(strongSelf.queue)).start(completed: {
                              guard let strongSelf = self else {
-@@ -968,9 +985,11 @@ public final class AccountStateManager {
+@@ -968,9 +989,11 @@ public final class AccountStateManager {
                              if let difference = difference {
                                  switch difference {
                                  case .differenceSlice:
@@ -18794,7 +18826,7 @@ index d4c91139..79a2bc8a 100644
                                          currentChannelOperationsContext.canComplete = true
                                          currentChannelOperationsContext.events = currentChannelOperationsContext.events.union(with: events)
                                          
-@@ -981,13 +1000,16 @@ public final class AccountStateManager {
+@@ -981,13 +1004,16 @@ public final class AccountStateManager {
                                          }
                                          strongSelf.currentIsUpdatingValue = false
                                          strongSelf.significantStateUpdateCompletedPipe.putNext(Void())
