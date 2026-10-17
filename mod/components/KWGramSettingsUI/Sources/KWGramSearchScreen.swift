@@ -155,7 +155,6 @@ public func kwGramSearchController(context: AccountContext) -> ViewController {
         KWGramSearchItem(title: "Удалённые сообщения", subtitle: "Сохранять сообщения, удалённые собеседником", sectionName: "Чаты", keywords: "антиделит recover delete восстановление", open: openMessages),
         KWGramSearchItem(title: "Изменить визуально", subtitle: "Локально править текст и подкладывать фейк-контент", sectionName: "Чаты", keywords: "visual edit фейк текст фото", open: openMessages),
         KWGramSearchItem(title: "Вкладка «Подарки»", subtitle: "Поиск своих коллекций и каталога подарков прямо в глобальном поиске", sectionName: "Чаты", keywords: "поиск подарков вкладка подарки коллекция gift search", open: openMessages),
-        KWGramSearchItem(title: "Мут в ЛС", subtitle: "Все сообщения собеседника удаляются автоматически по команде", sectionName: "Чаты", keywords: "мут мьют mute лс удалить автоматически", open: openMessages),
         KWGramSearchItem(title: "Режим призрака", subtitle: "Скрывать прочтение, онлайн, «печатает», истории", sectionName: "Ghost", keywords: "ghost призрак нечиталка онлайн typing", open: openGhost),
         KWGramSearchItem(title: "Не читать сообщения", subtitle: "Не отправлять отметку о прочтении", sectionName: "Ghost", keywords: "прочтение read receipt галочки", open: openGhost),
         KWGramSearchItem(title: "Не отправлять «онлайн»", subtitle: "Не показывать статус в сети", sectionName: "Ghost", keywords: "онлайн online статус", open: openGhost),

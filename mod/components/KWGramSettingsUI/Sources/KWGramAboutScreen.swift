@@ -1,7 +1,6 @@
 import Foundation
 import Display
 import SwiftSignalKit
-import TelegramCore
 import TelegramPresentationData
 import ItemListUI
 import PresentationDataUtils
@@ -13,8 +12,6 @@ private enum KWGramAboutEntry: ItemListNodeEntry {
     case aboutText(String)
     case changelogHeader(String)
     case changelogText(String)
-    case diagHeader(String)
-    case diagText(String)
 
     var section: ItemListSectionId {
         switch self {
@@ -24,8 +21,6 @@ private enum KWGramAboutEntry: ItemListNodeEntry {
             return 1
         case .changelogHeader, .changelogText:
             return 2
-        case .diagHeader, .diagText:
-            return 3
         }
     }
 
@@ -41,10 +36,6 @@ private enum KWGramAboutEntry: ItemListNodeEntry {
             return 3
         case .changelogText:
             return 4
-        case .diagHeader:
-            return 5
-        case .diagText:
-            return 6
         }
     }
 
@@ -68,9 +59,9 @@ private enum KWGramAboutEntry: ItemListNodeEntry {
                 disclosureStyle: .none,
                 action: nil
             )
-        case let .aboutHeader(text), let .changelogHeader(text), let .diagHeader(text):
+        case let .aboutHeader(text), let .changelogHeader(text):
             return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
-        case let .aboutText(text), let .changelogText(text), let .diagText(text):
+        case let .aboutText(text), let .changelogText(text):
             return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
         }
     }
@@ -79,13 +70,9 @@ private enum KWGramAboutEntry: ItemListNodeEntry {
 /// The hub's hero row opens this on tap — a short "what is this" plus the current release's
 /// changelog. Both texts live in `KWGramVersion.swift`, updated on every release.
 public func kwGramAboutController(context: AccountContext) -> ViewController {
-    // Диагностика пайплайна состояния аккаунта идёт вторым входом: каждое новое значение
-    // пересобирает entries, поэтому секция внизу показывает текущую ветку updates.getDifference,
-    // даже когда список уже построен и «Обновление...» застряло навсегда.
-    let signal = combineLatest(context.sharedContext.presentationData, KWGramStateDiagnostics.signal)
+    let signal = context.sharedContext.presentationData
     |> deliverOnMainQueue
-    |> map { pair -> (ItemListControllerState, (ItemListNodeState, Any)) in
-        let (presentationData, diagnostics) = pair
+    |> map { presentationData -> (ItemListControllerState, (ItemListNodeState, Any)) in
         let controllerState = ItemListControllerState(
             presentationData: ItemListPresentationData(presentationData),
             title: .text("О KW Gram"),
@@ -99,9 +86,7 @@ public func kwGramAboutController(context: AccountContext) -> ViewController {
             .aboutHeader("ЧТО ЭТО"),
             .aboutText("Мод для Telegram-iOS: визуальные и локальные функции поверх настоящего клиента."),
             .changelogHeader("ЧТО В ЭТОЙ ВЕРСИИ"),
-            .changelogText(kwGramChangelogText),
-            .diagHeader("ДИАГНОСТИКА ЗАГРУЗКИ"),
-            .diagText(diagnostics)
+            .changelogText(kwGramChangelogText)
         ]
         let listState = ItemListNodeState(
             presentationData: ItemListPresentationData(presentationData),

@@ -132,7 +132,7 @@ private enum KWGramHubEntry: ItemListNodeEntry {
                 title: "Чаты",
                 titleFont: .bold,
                 label: "",
-                additionalDetailLabel: "Визуальный редактор, история, поиск подарков, мут ЛС",
+                additionalDetailLabel: "Визуальный редактор, история, поиск подарков",
                 sectionId: self.section,
                 style: .blocks,
                 action: {
